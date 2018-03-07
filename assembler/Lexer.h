@@ -35,11 +35,10 @@ private:
 
     Token scan_number(int ch);
     Token scan_directive(int ch);
-    Token scan_register(int ch);
     Token scan_keyword_or_identifier(int ch);
     Token scan_string(int ch);
     Token comment(int ch);
-    bool match(int ch);
+//    bool match(int ch);
     int peek();
     int advance();
 

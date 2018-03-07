@@ -17,11 +17,11 @@ std::ostream& operator<<(std::ostream& os, const Token& token)
 
 std::string Source_location::to_string() const
 {
-    return "Line "+std::to_string(line)
-            +", Column "+std::to_string(column);
+    return "Line " + std::to_string(line)
+            + ", Column " + std::to_string(column);
 }
 
-const std::unordered_map<std::string, Opcode> opcodes{ //NOLINT
+const std::unordered_map<std::string, Opcode> opcodes { //NOLINT
         {"add",     Opcode::R_TYPE},
         {"addi",    Opcode::ADDI},
         {"addu",    Opcode::R_TYPE},
@@ -75,7 +75,7 @@ const std::unordered_map<std::string, Opcode> opcodes{ //NOLINT
         {"move",    Opcode::MOVE},
 };
 
-const std::unordered_map<std::string, Tag> reserved_words{ //NOLINT
+const std::unordered_map<std::string, Tag> reserved_words { //NOLINT
         {"add",     Tag::Instruction},
         {"addi",    Tag::Instruction},
         {"addu",    Tag::Instruction},
@@ -205,7 +205,7 @@ const std::unordered_map<std::string, Tag> reserved_words{ //NOLINT
         {"$31",     Tag::Register},
 };
 
-const std::unordered_map<std::string, Funct> functs{ //NOLINT
+const std::unordered_map<std::string, Funct> functs { //NOLINT
         {"add",     Funct::ADD},
         {"addu",    Funct::ADDU},
         {"and",     Funct::AND},
@@ -238,80 +238,110 @@ const std::unordered_map<std::string, Funct> functs{ //NOLINT
 std::ostream& operator<<(std::ostream& os, const Tag& tag)
 {
     switch (tag) {
-    case Tag::Identifier:return os << "identifier";
-    case Tag::Label:return os << "label";
-    case Tag::String:return os << "string";
-    case Tag::Immediate:return os << "immediate";
-    case Tag::Directive:return os << "directive";
-    case Tag::Instruction:return os << "instruction";
-    case Tag::Register:return os << "register";
-    case Tag::Eof:return os << "EOF";
+    case Tag::Identifier:
+        return os << "identifier";
+    case Tag::Label:
+        return os << "label";
+    case Tag::String:
+        return os << "string";
+    case Tag::Immediate:
+        return os << "immediate";
+    case Tag::Directive:
+        return os << "directive";
+    case Tag::Instruction:
+        return os << "instruction";
+    case Tag::Register:
+        return os << "register";
+    case Tag::Eof:
+        return os << "EOF";
+    case Tag::NL:
+        return os << "NL";
+    case Tag::MINUS:
+        return os << '-';
+    case Tag::COLON:
+        return os << ':';
+    default:
+        return os;
     }
 }
 
 const std::unordered_map<std::string, Reg> registers {
-        {"$zero",   Reg::ZERO},
-        {"$0",      Reg::ZERO},
-        {"$at",     Reg::AT},
-        {"$1",      Reg::AT},
-        {"$v0",     Reg::V0},
-        {"$2",      Reg::V0},
-        {"$v1",     Reg::V1},
-        {"$3",      Reg::V1},
-        {"$a0",     Reg::A0},
-        {"$4",      Reg::A0},
-        {"$a1",     Reg::A1},
-        {"$5",      Reg::A1},
-        {"$a2",     Reg::A2},
-        {"$6",      Reg::A2},
-        {"$a3",     Reg::A3},
-        {"$7",      Reg::A3},
-        {"$t0",     Reg::T0},
-        {"$8",      Reg::T0},
-        {"$t1",     Reg::T1},
-        {"$9",      Reg::T1},
-        {"$t2",     Reg::T2},
-        {"$10",     Reg::T2},
-        {"$t3",     Reg::T3},
-        {"$11",     Reg::T3},
-        {"$t4",     Reg::T4},
-        {"$12",     Reg::T4},
-        {"$t5",     Reg::T5},
-        {"$13",     Reg::T5},
-        {"$t6",     Reg::T6},
-        {"$14",     Reg::T6},
-        {"$t7",     Reg::T7},
-        {"$15",     Reg::T7},
-        {"$s0",     Reg::S0},
-        {"$16",     Reg::S0},
-        {"$s1",     Reg::S1},
-        {"$17",     Reg::S1},
-        {"$s2",     Reg::S2},
-        {"$18",     Reg::S2},
-        {"$s3",     Reg::S3},
-        {"$19",     Reg::S3},
-        {"$s4",     Reg::S4},
-        {"$20",     Reg::S4},
-        {"$s5",     Reg::S5},
-        {"$21",     Reg::S5},
-        {"$s6",     Reg::S6},
-        {"$22",     Reg::S6},
-        {"$s7",     Reg::S7},
-        {"$23",     Reg::S7},
-        {"$t8",     Reg::T8},
-        {"$24",     Reg::T8},
-        {"$t9",     Reg::T9},
-        {"$25",     Reg::T9},
-        {"$k0",     Reg::K0},
-        {"$26",     Reg::K0},
-        {"$k1",     Reg::K1},
-        {"$27",     Reg::K1},
-        {"$gp",     Reg::GP},
-        {"$28",     Reg::GP},
-        {"$sp",     Reg::SP},
-        {"$29",     Reg::SP},
-        {"$fp",     Reg::FP},
-        {"$30",     Reg::FP},
-        {"$ra",     Reg::RA},
-        {"$31",     Reg::RA},
+        {"$zero", Reg::ZERO},
+        {"$0",    Reg::ZERO},
+        {"$at",   Reg::AT},
+        {"$1",    Reg::AT},
+        {"$v0",   Reg::V0},
+        {"$2",    Reg::V0},
+        {"$v1",   Reg::V1},
+        {"$3",    Reg::V1},
+        {"$a0",   Reg::A0},
+        {"$4",    Reg::A0},
+        {"$a1",   Reg::A1},
+        {"$5",    Reg::A1},
+        {"$a2",   Reg::A2},
+        {"$6",    Reg::A2},
+        {"$a3",   Reg::A3},
+        {"$7",    Reg::A3},
+        {"$t0",   Reg::T0},
+        {"$8",    Reg::T0},
+        {"$t1",   Reg::T1},
+        {"$9",    Reg::T1},
+        {"$t2",   Reg::T2},
+        {"$10",   Reg::T2},
+        {"$t3",   Reg::T3},
+        {"$11",   Reg::T3},
+        {"$t4",   Reg::T4},
+        {"$12",   Reg::T4},
+        {"$t5",   Reg::T5},
+        {"$13",   Reg::T5},
+        {"$t6",   Reg::T6},
+        {"$14",   Reg::T6},
+        {"$t7",   Reg::T7},
+        {"$15",   Reg::T7},
+        {"$s0",   Reg::S0},
+        {"$16",   Reg::S0},
+        {"$s1",   Reg::S1},
+        {"$17",   Reg::S1},
+        {"$s2",   Reg::S2},
+        {"$18",   Reg::S2},
+        {"$s3",   Reg::S3},
+        {"$19",   Reg::S3},
+        {"$s4",   Reg::S4},
+        {"$20",   Reg::S4},
+        {"$s5",   Reg::S5},
+        {"$21",   Reg::S5},
+        {"$s6",   Reg::S6},
+        {"$22",   Reg::S6},
+        {"$s7",   Reg::S7},
+        {"$23",   Reg::S7},
+        {"$t8",   Reg::T8},
+        {"$24",   Reg::T8},
+        {"$t9",   Reg::T9},
+        {"$25",   Reg::T9},
+        {"$k0",   Reg::K0},
+        {"$26",   Reg::K0},
+        {"$k1",   Reg::K1},
+        {"$27",   Reg::K1},
+        {"$gp",   Reg::GP},
+        {"$28",   Reg::GP},
+        {"$sp",   Reg::SP},
+        {"$29",   Reg::SP},
+        {"$fp",   Reg::FP},
+        {"$30",   Reg::FP},
+        {"$ra",   Reg::RA},
+        {"$31",   Reg::RA},
+};
+
+const std::unordered_map<std::string, Directive> directives { //NOLINT
+        {".align", Directive::ALIGN},
+        {".ascii", Directive::ASCII},
+        {".asciiz", Directive::ASCIIZ},
+        {".byte", Directive::BYTE},
+        {".data", Directive::DATA},
+        {".extern", Directive::EXTERN},
+        {".globl", Directive::GLOBL},
+        {".half", Directive::HALF},
+        {".space", Directive::SPACE},
+        {".text", Directive::TEXT},
+        {".word", Directive::WORD},
 };

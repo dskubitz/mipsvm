@@ -24,6 +24,9 @@ enum class Tag : int {
     Instruction,
     Register,
 
+    COLON=':',
+    MINUS='-',
+    NL='\n',
     Eof = EOF,
 };
 
@@ -75,10 +78,22 @@ enum class Reg {
 
 extern const std::unordered_map<std::string, Reg> registers;
 
+enum class Directive {
+    ALIGN, ASCII, ASCIIZ, BYTE, DATA, EXTERN, GLOBL, HALF, SPACE, TEXT, WORD,
+};
+
+extern const std::unordered_map<std::string, Directive> directives;
+
 template<class Enum>
 auto as_integer(Enum value)
 {
     return static_cast<typename std::underlying_type<Enum>::type>(value);
+}
+
+template<class Enum>
+unsigned as_unsigned(Enum value)
+{
+    return static_cast<unsigned>(as_integer(value));
 }
 
 std::ostream& operator<<(std::ostream& os, const Tag& tag);

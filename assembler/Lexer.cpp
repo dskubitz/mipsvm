@@ -1,53 +1,68 @@
 #include "Lexer.h"
 #include <sstream>
+#include <algorithm>
 
 namespace {
 int escaped_char(int ch)
 {
     switch (ch) {
-    case 'n':return '\n';
-    case 't':return '\t';
-    case '\\':return '\\';
-    case '\"':return '\"';
-    case '0':return '\0';
-    default:return ch;
+    case 'n':
+        return '\n';
+    case 't':
+        return '\t';
+    case '\\':
+        return '\\';
+    case '\"':
+        return '\"';
+    case '0':
+        return '\0';
+    default:
+        return ch;
     }
 }
 
 bool isalnum_(int ch)
 {
-    return isalnum(ch) || ch=='_';
+    return isalnum(ch) || ch == '_';
 }
 
+/*
 void stolower(std::string& str)
 {
     std::transform(str.begin(), str.end(), str.begin(),
-            [](const auto& a){return ::tolower(a);});
+                   [](const auto& a) { return ::tolower(a); });
 }
+*/
 }
 
 Lexer::Lexer(std::istream& input)
         :input_(input),
          line_(1),
-         column_(0) { }
+         column_(0)
+{ }
 
 Token Lexer::scan()
 {
     int ch = advance();
-    while (ch!=EOF && isspace(ch)) {
+    while (ch != EOF && isspace(ch)) {
         ch = advance();
     }
     location_ = {line_, column_};
     switch (ch) {
-    case '#':return comment(ch);
-    case '"':return scan_string(ch);
-    case '.':return scan_directive(ch);
-    case '$':return scan_register(ch);
-    case ',':return scan();
-    case '(':return scan();
-    case ')':return scan();
+    case '#':
+        return comment(ch);
+    case '"':
+        return scan_string(ch);
+    case '.':
+        return scan_directive(ch);
+    case ',':
+        return scan();
+    case '(':
+        return scan();
+    case ')':
+        return scan();
     default:
-        if (ch=='_' || isalpha(ch))
+        if (ch == '_' || isalpha(ch) || ch == '$')
             return scan_keyword_or_identifier(ch);
         else if (isdigit(ch))
             return scan_number(ch);
@@ -74,7 +89,7 @@ Token Lexer::scan_directive(int ch)
         lexeme.push_back(static_cast<char>(ch = advance()));
 
     auto it = reserved_words.find(lexeme);
-    if (it==reserved_words.end())
+    if (it == reserved_words.end())
         error("malformed directive");
 
     table_[location_] = lexeme;
@@ -90,12 +105,18 @@ Token Lexer::scan_keyword_or_identifier(int ch)
 
     auto word = reserved_words.find(lexeme);
 
-    if (word!=reserved_words.end()) {
-        table_[location_] = lexeme;
+    if (word != reserved_words.end()) {
+        auto regit = registers.find(lexeme);
+        if (regit != registers.end()) {
+            table_[location_] = as_integer(regit->second);
+        }
+        else {
+            table_[location_] = lexeme;
+        }
         return make_token(word->second);
     }
     else {
-        if (peek()==':') {
+        if (peek() == ':') {
             advance();
             table_[location_] = lexeme;
             return make_token(Tag::Label);
@@ -110,7 +131,7 @@ Token Lexer::comment(int ch)
     do {
         ch = advance();
     }
-    while (ch!='\n');
+    while (ch != '\n' && ch != EOF);
     return scan();
 }
 
@@ -120,10 +141,13 @@ Token Lexer::scan_string(int ch)
     for (;;) {
         ch = advance();
         switch (ch) {
-        case '\\':lexeme.push_back(static_cast<char>(escaped_char(advance())));
+        case '\\':
+            lexeme.push_back(static_cast<char>(escaped_char(advance())));
             continue;
-        case '\"':break;
-        default:lexeme.push_back(static_cast<char>(ch));
+        case '\"':
+            break;
+        default:
+            lexeme.push_back(static_cast<char>(ch));
             continue;
         }
         break;
@@ -132,13 +156,16 @@ Token Lexer::scan_string(int ch)
     return make_token(Tag::String);
 }
 
+
+/*
 bool Lexer::match(int ch)
 {
-    if (peek()!=ch)
+    if (peek() != ch)
         return false;
     advance();
     return true;
 }
+*/
 
 int Lexer::peek()
 {
@@ -149,21 +176,9 @@ int Lexer::advance()
 {
     int ch = input_.get();
     ++column_;
-    if (ch=='\n') {
+    if (ch == '\n') {
         ++line_;
         column_ = 0;
     }
     return ch;
-}
-
-Token Lexer::scan_register(int ch)
-{
-    std::string lexeme(1, static_cast<char>(ch));
-    while (isalnum_(peek()))
-        lexeme.push_back(static_cast<char>(ch = advance()));
-    auto it = reserved_words.find(lexeme);
-    if (it==reserved_words.end())
-        error("malformed register");
-    table_[location_] = as_integer(registers.at(lexeme));
-    return make_token(it->second);
 }
