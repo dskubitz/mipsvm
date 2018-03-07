@@ -13,7 +13,6 @@ struct Parse_error : std::runtime_error {
 class Assembler {
 public:
     explicit Assembler(Lexer& lexer);
-    ~Assembler();
 
     int assemble();
 private:
@@ -33,25 +32,25 @@ private:
     template<typename T, typename... Ts>
         bool match(T tag, Ts... rest);
 
-    Token consume(char tag, const std::string& msg);
+    Token consume(Tag tag);
 
-    Token consume(Tag tag, const std::string& msg);
+    [[noreturn]] void error(Tag expected);
 
-    [[noreturn]] void error(const std::string& msg);
-    [[noreturn]] void error(Token token, const std::string& msg);
-
-    std::string get_str(Token tok);
+    const std::string& get_str(Token tok);
 
     int get_num(Token tok);
 
     void parse_line();
     void parse_label();
     void parse_instruction();
+    void parse_rtype(Funct funct);
+    void write_rtype(unsigned int dest, unsigned int source, unsigned int rd, unsigned int shamt,
+            Funct funct);
+    void parse_itype(Opcode opcode);
+    void parse_jtype(Opcode opcode);
     void parse_directive();
 
     void print_token(Token token);
-    void write_Rtype();
-    void write_itype();
 };
 
 

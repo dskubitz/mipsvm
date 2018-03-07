@@ -63,6 +63,7 @@ Variant& Variant::operator=(const std::string& s)
         new(&str_) std::string(s);
         tag_ = Tag::String;
     }
+    return *this;
 }
 
 Variant& Variant::operator=(int i)
@@ -71,6 +72,7 @@ Variant& Variant::operator=(int i)
     if (tag_ == Tag::String) str_.~string();
     num_ = i;
     tag_ = Tag::Int;
+    return *this;
 }
 
 Variant& Variant::operator=(double d)
@@ -79,6 +81,7 @@ Variant& Variant::operator=(double d)
     if (tag_ == Tag::String) str_.~string();
     real_ = d;
     tag_ = Tag::Double;
+    return *this;
 }
 
 std::string& Variant::str()
