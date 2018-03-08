@@ -1,15 +1,28 @@
 #include "Assembler.h"
 #include <fstream>
-#include <chrono>
+
+std::string chop_file_extension(const char* file)
+{
+    std::string res(file);
+    size_t index = res.find('.');
+    res.erase(res.begin() + index, res.end());
+    return res;
+}
 
 int main(int argc, char** argv)
 {
-    std::ifstream input("test.asm");
+    if (argc != 2) {
+        std::cerr << "usage: " << argv[0] << " file\n";
+        return 1;
+    }
+    std::ifstream input(argv[1]);
     if (input.is_open()) {
+        std::ofstream output(chop_file_extension(argv[1]) + ".o");
         Lexer lexer(input);
         Assembler assembler(lexer);
-        return assembler.assemble(std::cout);
+        return assembler.assemble(output);
     }
+    std::cerr << "couldn't open file\n";
     return 1;
 }
 
@@ -98,11 +111,11 @@ void Assembler::output_object(std::ostream& output)
 
     output << ".symbol\n";
     for (auto& i : symbol_table)
-        std::cout << i.second << ' ' << i.first << '\n';
+        output << i.second << ' ' << i.first << '\n';
 
     output << ".relocation\n";
     for (auto& i : relocation_table) {
-        std::cout << i.first << std::internal << " " << i.second << '\n';
+        output << i.first << std::internal << " " << i.second << '\n';
     }
 }
 
