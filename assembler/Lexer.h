@@ -2,29 +2,32 @@
 // Created by dvsku on 2/20/2018.
 //
 
-#ifndef DRAGON_LEXER_H
-#define DRAGON_LEXER_H
+#ifndef LEXER_H
+#define LEXER_H
 
 #include <iosfwd>
 #include <string>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+
 #include "Token.h"
-#include "Variant.h"
+#include <boost/variant/variant.hpp>
 
 struct Lexer_error : public std::runtime_error {
     using std::runtime_error::runtime_error;
     using std::runtime_error::what;
 };
 
-
 class Lexer {
 public:
+    using Variant = boost::variant<int, std::string>;
+
     explicit Lexer(std::istream& input);
     Token scan();
 
-    const std::unordered_map<Source_location, Variant>& table() const noexcept;
+    const std::unordered_map<Source_location, Variant>& table() const noexcept
+    { return table_; }
 
 private:
     std::unordered_map<Source_location, Variant> table_;
@@ -65,8 +68,5 @@ inline Token Lexer::make_token(Tag tag)
 {
     return Token(tag, location_);
 }
-
-inline const std::unordered_map<Source_location, Variant>& Lexer::table() const noexcept
-{ return table_; }
 
 #endif //DRAGON_LEXER_H

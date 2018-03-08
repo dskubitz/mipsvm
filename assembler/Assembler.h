@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "Lexer.h"
+#include <boost/variant/get.hpp>
 
 struct Parse_error : std::runtime_error {
     using std::runtime_error::runtime_error;
@@ -102,8 +103,7 @@ private:
 
     Token advance();
     bool match(Tag tag);
-    template<typename T, typename... Ts>
-    bool match(T tag, Ts... rest);
+    template<typename T, typename... Ts> bool match(T tag, Ts... rest);
     Token consume(Tag tag);
     [[noreturn]] void error(Tag expected);
 
@@ -195,12 +195,12 @@ inline Token Assembler::consume(Tag tag)
 
 inline const std::string& Assembler::get_str(Token tok)
 {
-    return lex.table().at(tok.location()).str();
+    return boost::get<std::string>(lex.table().at(tok.location()));
 }
 
 inline int Assembler::get_num(Token tok)
 {
-    return lex.table().at(tok.location()).num();
+    return boost::get<int>(lex.table().at(tok.location()));
 }
 
 inline unsigned Assembler::get_unsigned(Token tok)

@@ -4,6 +4,17 @@
 
 #include "Assembler.h"
 
+int main(int argc, char** argv)
+{
+    std::ifstream input("test.asm");
+    if (input.is_open()) {
+        Lexer lexer(input);
+        Assembler assembler(lexer);
+        return assembler.assemble();
+    }
+    return 1;
+}
+
 void Assembler::print_data_segment()
 {
     std::cout << " [ ";
@@ -29,6 +40,7 @@ int Assembler::assemble()
     std::cout << "Jump labels\n";
     for (auto& i : jump_labels)
         std::cout << '\t' << i.first << " " << i.second.addr << ' ' << i.second.seg << '\n';
+
     for (auto& i : branch_labels) {
         auto it = symbol_table.find(i.first);
         if (it!=symbol_table.end())
@@ -37,15 +49,13 @@ int Assembler::assemble()
     std::cout << "Symbol table\n";
     for (auto& i : symbol_table)
         std::cout << '\t' << i.first << " " << i.second.addr << ' ' << i.second.seg << '\n';
+
     std::cout << "Relocation table\n";
     for (auto& i : relocation_table)
         std::cout << '\t' << i.first << " " << i.second.addr << ' ' << i.second.seg << '\n';
-    std::cout << "Globals\n";
-    for (auto& i : globals)
-        std::cout << '\t' << i << '\n';
-    print_data_segment();
+
     for (size_t i = 0; i<text_segment.size(); ++i) {
-        printf("%04x: %08x\n", i << 2, text_segment[i]);
+        printf("%04zx: %08x\n", i << 2, text_segment[i]);
     }
     return 0;
 }
@@ -224,7 +234,7 @@ void Assembler::parse_itype(Opcode opcode)
             auto address = it->second;
             if (address.seg==Segment::Data)
                 throw Parse_error("branch to data segment");
-            auto imm_val = address.addr-text_address >> 2;
+            auto imm_val = (address.addr-text_address) >> 2;
             write_itype(opcode, get_unsigned(source), get_unsigned(dest), imm_val);
         }
         else { // We need to wait to resolve it
@@ -379,13 +389,4 @@ void Assembler::parse_directive()
     }
 }
 
-int main(int argc, char** argv)
-{
-    std::ifstream input("test.asm");
-    if (input.is_open()) {
-        Lexer lexer(input);
-        Assembler assembler(lexer);
-        return assembler.assemble();
-    }
-    return 1;
-}
+
