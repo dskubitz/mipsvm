@@ -1,8 +1,8 @@
+#include "Assembler.h"
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
-
-#include "Assembler.h"
 
 int main(int argc, char** argv)
 {
@@ -15,10 +15,11 @@ int main(int argc, char** argv)
     return 1;
 }
 
+// For debugging, may remove in the future
 void Assembler::print_data_segment()
 {
     std::cout << " [ ";
-    for (size_t i = 0; i<data_segment.size();) {
+    for (size_t i = 0; i < data_segment.size();) {
         auto c = data_segment[i++];
         if (isprint(c)) {
             std::cout << c << ' ';
@@ -26,7 +27,7 @@ void Assembler::print_data_segment()
         else {
             std::cout << static_cast<int>(c) << ' ';
         }
-        if (i%data_alignment==0)
+        if (i % data_alignment == 0)
             std::cout << " | ";
     }
     std::cout << " ] \n";
@@ -34,7 +35,7 @@ void Assembler::print_data_segment()
 
 int Assembler::assemble()
 {
-    while (lookahead.tag()!=Tag::Eof) {
+    while (lookahead.tag() != Tag::Eof) {
         parse_line();
     }
     std::cout << "Jump labels\n";
@@ -43,7 +44,7 @@ int Assembler::assemble()
 
     for (auto& i : branch_labels) {
         auto it = symbol_table.find(i.first);
-        if (it!=symbol_table.end())
+        if (it != symbol_table.end())
             text_segment.at(i.second.addr >> 2) |= it->second.addr & 65535;
     }
     std::cout << "Symbol table\n";
@@ -54,7 +55,7 @@ int Assembler::assemble()
     for (auto& i : relocation_table)
         std::cout << '\t' << i.first << " " << i.second.addr << ' ' << i.second.seg << '\n';
 
-    for (size_t i = 0; i<text_segment.size(); ++i) {
+    for (size_t i = 0; i < text_segment.size(); ++i) {
         printf("%04zx: %08x\n", i << 2, text_segment[i]);
     }
     return 0;
@@ -70,13 +71,13 @@ void Assembler::parse_line()
         parse_directive();
         break;
     case Tag::Instruction:
-        if (current_segment!=Segment::Text)
+        if (current_segment != Segment::Text)
             throw Parse_error("code in data segment");
         parse_instruction();
         break;
     default:
-        if (lookahead.tag()==Tag::Identifier) {
-            std::cout << "skipping " << get_str(lookahead) << '\n';
+        if (lookahead.tag() == Tag::Identifier) {
+            std::cout << "skipping " << get<std::string>(lookahead) << '\n';
 
         }
         else {
@@ -90,19 +91,19 @@ void Assembler::parse_line()
 
 void Assembler::parse_label()
 {
-    symbol_table.insert(std::make_pair(get_str(lookahead), current_address()));
+    symbol_table.insert(std::make_pair(get<std::string>(lookahead), current_address()));
     advance();
 }
 
 void Assembler::parse_instruction()
 {
-    const std::string& inst = get_str(lookahead);
+    const std::string& inst = get<std::string>(lookahead);
     auto opcode = opcodes.at(inst);
     advance();
 
-    if (opcode==Opcode::R_TYPE)
+    if (opcode == Opcode::R_TYPE)
         parse_rtype(functs.at(inst));
-    else if (as_integer(opcode)==2 || as_integer(opcode)==3)
+    else if (as_integer(opcode) == 2 || as_integer(opcode) == 3)
         parse_jtype(opcode);
     else
         parse_itype(opcode);
@@ -117,7 +118,7 @@ void Assembler::parse_rtype(Funct funct)
         Token dest = consume(Tag::Register);
         Token source = consume(Tag::Register);
         Token imm = consume(Tag::Immediate);
-        write_rtype(get_unsigned(dest), 0, get_unsigned(source), get_unsigned(imm), funct);
+        write_rtype(get<int>(dest), 0, get<int>(source), get<int>(imm), funct);
         return;
     }
     case Funct::ADD:
@@ -136,19 +137,19 @@ void Assembler::parse_rtype(Funct funct)
         Token dest = consume(Tag::Register);
         Token source = consume(Tag::Register);
         Token target = consume(Tag::Register);
-        write_rtype(get_unsigned(dest), get_unsigned(source), get_unsigned(target), 0, funct);
+        write_rtype(get<int>(dest), get<int>(source), get<int>(target), 0, funct);
         return;
     }
     case Funct::MFLO:
     case Funct::MFHI: {
         Token dest = consume(Tag::Register);
-        write_rtype(get_unsigned(dest), 0, 0, 0, funct);
+        write_rtype(get<int>(dest), 0, 0, 0, funct);
         return;
     }
     case Funct::MTLO:
     case Funct::MTHI: {
         Token source = consume(Tag::Register);
-        write_rtype(0, get_unsigned(source), 0, 0, funct);
+        write_rtype(0, get<int>(source), 0, 0, funct);
         return;
     }
     case Funct::MULT:
@@ -157,18 +158,18 @@ void Assembler::parse_rtype(Funct funct)
     case Funct::DIVU: {
         Token source = consume(Tag::Register);
         Token target = consume(Tag::Register);
-        write_rtype(0, get_unsigned(source), get_unsigned(target), 0, funct);
+        write_rtype(0, get<int>(source), get<int>(target), 0, funct);
         return;
     }
     case Funct::JR: {
         Token source = consume(Tag::Register);
-        write_rtype(0, get_unsigned(source), 0, 0, funct);
+        write_rtype(0, get<int>(source), 0, 0, funct);
         return;
     }
     case Funct::JALR: {
         Token source = consume(Tag::Register);
         Token dest = consume(Tag::Register);
-        write_rtype(get_unsigned(dest), get_unsigned(source), 0, 0, funct);
+        write_rtype(get<int>(dest), get<int>(source), 0, 0, funct);
         return;
     }
     case Funct::SYSCALL: {
@@ -193,33 +194,36 @@ void Assembler::parse_rtype(Funct funct)
 void Assembler::parse_jtype(Opcode opcode)
 {
     Token identifier = consume(Tag::Identifier);
-    jump_labels[get_str(identifier)] = current_address();
+    jump_labels[get<std::string>(identifier)] = current_address();
     write_jtype(opcode, 0);
 }
 
 void Assembler::parse_itype(Opcode opcode)
 {
+    // I'll try to keep pseudoinstructions near the front of this.
     switch (opcode) {
     case Opcode::LI: {
         Token dest = consume(Tag::Register);
         Token imm = consume(Tag::Immediate);
-        unsigned ival = get_unsigned(imm);
-        if (ival>65535) { // Wont fit in half-word
+        auto ival = get<int>(imm);
+        if (ival > 65535) { // Wont fit in half-word
             write_itype(Opcode::LUI, as_unsigned(Reg::AT), 0, (ival & 65535) << 16);
-            write_itype(Opcode::ORI, get_unsigned(dest), as_unsigned(Reg::AT), (ival & 65535));
+            write_itype(Opcode::ORI, get<int>(dest), as_unsigned(Reg::AT), (ival & 65535));
             return;
         }
         else {
-            write_itype(Opcode::ADDIU, get_unsigned(dest), 0, ival);
+            write_itype(Opcode::ADDIU, get<int>(dest), 0, ival);
         }
         return;
     }
     case Opcode::MOVE: {
         Token dest = consume(Tag::Register);
         Token target = consume(Tag::Register);
-        write_rtype(get_unsigned(dest), 0, get_unsigned(target), 0, Funct::ADDU);
+        write_rtype(get<int>(dest), 0, get<int>(target), 0, Funct::ADDU);
         return;
     }
+        // Branch instructions. These do not need to be entered in the
+        // relocation table.
     case Opcode::BEQ:
     case Opcode::BNE:
     case Opcode::BLEZ:
@@ -227,19 +231,20 @@ void Assembler::parse_itype(Opcode opcode)
         Token dest = consume(Tag::Register);
         Token source = consume(Tag::Register);
         Token identifier = consume(Tag::Identifier);
-        auto it = symbol_table.find(get_str(identifier));
+
+        auto it = symbol_table.find(get<std::string>(identifier));
 
         // We found a label a PC-relative branch takes
-        if (it!=symbol_table.end()) {
+        if (it != symbol_table.end()) {
             auto address = it->second;
-            if (address.seg==Segment::Data)
+            if (address.seg == Segment::Data)
                 throw Parse_error("branch to data segment");
-            auto imm_val = (address.addr-text_address) >> 2;
-            write_itype(opcode, get_unsigned(source), get_unsigned(dest), imm_val);
+            auto imm_val = (address.addr - text_address) >> 2;
+            write_itype(opcode, get<int>(source), get<int>(dest), imm_val);
         }
         else { // We need to wait to resolve it
-            branch_labels[get_str(identifier)] = current_address();
-            write_itype(opcode, get_unsigned(source), get_unsigned(dest), 0);
+            branch_labels[get<std::string>(identifier)] = current_address();
+            write_itype(opcode, get<int>(source), get<int>(dest), 0);
         }
         return;
     }
@@ -257,19 +262,19 @@ void Assembler::parse_itype(Opcode opcode)
         if (match(Tag::MINUS)) {
             advance();
             imm = consume(Tag::Immediate);
-            ival = -get_num(imm);
+            ival = -get<int>(imm);
         }
         else {
             imm = consume(Tag::Immediate);
-            ival = get_num(imm);
+            ival = get<int>(imm);
         }
-        write_itype(opcode, get_unsigned(dest), get_unsigned(source), ival);
+        write_itype(opcode, get<int>(dest), get<int>(source), ival);
         return;
     }
     case Opcode::LUI: {
         Token dest = consume(Tag::Register);
         Token imm = consume(Tag::Immediate);
-        write_itype(opcode, get_unsigned(dest), 0, get_unsigned(imm));
+        write_itype(opcode, get<int>(dest), 0, get<int>(imm));
         return;
     }
     case Opcode::LB:
@@ -289,20 +294,20 @@ void Assembler::parse_itype(Opcode opcode)
 
         if (match(Tag::Immediate)) {
             Token imm = advance();
-            offset = get_num(imm);
+            offset = get<int>(imm);
         }
         Token source = consume(Tag::Register);
 
-        write_itype(opcode, get_unsigned(dest), get_unsigned(source), offset);
+        write_itype(opcode, get<int>(dest), get<int>(source), offset);
         return;
     }
         // lui ori pair
     case Opcode::LA: {
         Token dest = consume(Tag::Register);
         Token ident = consume(Tag::Identifier);
-        jump_labels[get_str(ident)] = text_address;
+        jump_labels[get<std::string>(ident)] = text_address;
         write_itype(Opcode::LUI, as_unsigned(Reg::AT), 0, 0);
-        write_itype(Opcode::ORI, get_unsigned(dest), as_unsigned(Reg::AT), 0);
+        write_itype(Opcode::ORI, get<int>(dest), as_unsigned(Reg::AT), 0);
         return;
     }
 
@@ -328,38 +333,35 @@ void Assembler::parse_itype(Opcode opcode)
 
 void Assembler::parse_directive()
 {
-    const std::string& directive = get_str(lookahead);
+    const std::string& directive = get<std::string>(lookahead);
     advance();
 
     Directive dir = directives.at(directive);
     switch (dir) {
     case Directive::ALIGN: {
         Token align = consume(Tag::Immediate);
-        data_alignment = static_cast<uint8_t>(1 << get_num(align));
+        data_alignment = static_cast<uint8_t>(1 << get<int>(align));
         return;
     }
     case Directive::ASCII:
     case Directive::ASCIIZ: {
-        if (current_segment!=Segment::Data)
+        if (current_segment != Segment::Data)
             throw Parse_error("declaring data in text segment");
 
         Token string = consume(Tag::String);
-        const std::string& ascii = get_str(string);
+        const std::string& ascii = get<std::string>(string);
 
         auto align = data_alignment;
 
         // Size of string aligned to current alignment,
         // accounting whether or not it is null-terminated.
-        size_t sz = dir==Directive::ASCIIZ ? ascii.size()+1 : ascii.size();
-        size_t end = sz/align*align;
-        if (end<sz) end += align;
+        size_t sz = dir == Directive::ASCIIZ ? ascii.size() + 1 : ascii.size();
+        size_t end = sz / align * align;
+        if (end < sz) end += align;
 
         // Add string to data segment
         std::copy(ascii.begin(), ascii.end(), std::back_inserter(data_segment));
-        for (size_t i = 0; i<=end-sz; ++i) data_segment.emplace_back(0);
-
-        // Print the data segment (will be removed)
-
+        for (size_t i = 0; i <= end - sz; ++i) data_segment.emplace_back(0);
 
         // Next data label will be at this address
         data_address = static_cast<uint32_t>(data_segment.size());
@@ -373,7 +375,7 @@ void Assembler::parse_directive()
         return;
     case Directive::GLOBL: {
         Token ident = consume(Tag::Identifier);
-        const std::string& label = get_str(ident);
+        const std::string& label = get<std::string>(ident);
         globals.insert(label);
         return;
     }

@@ -1,9 +1,13 @@
 #ifndef MIPS_ASSEMBLER_H
 #define MIPS_ASSEMBLER_H
 
+#include <iostream>
 #include <vector>
-#include "Lexer.h"
+
 #include <boost/variant/get.hpp>
+#include <boost/type_index.hpp>
+
+#include "Lexer.h"
 
 struct Parse_error : std::runtime_error {
     using std::runtime_error::runtime_error;
@@ -107,9 +111,18 @@ private:
     Token consume(Tag tag);
     [[noreturn]] void error(Tag expected);
 
-    const std::string& get_str(Token tok);
-    int get_num(Token tok);
-    unsigned get_unsigned(Token tok);
+    template<class T> const T& get(Token tok)
+    {
+        try {
+            return boost::get<T>(lex.table().at(tok.location()));
+        } catch (std::exception& e) {
+            std::cerr << e.what()
+                      << ": caught when reading a(n)"
+                      << boost::typeindex::type_id<T>().pretty_name()
+                      << " at " << tok.location() << '\n';
+            abort();
+        }
+    }
 
     void print_data_segment();
 
@@ -192,22 +205,5 @@ inline Token Assembler::consume(Tag tag)
 
     return advance();
 }
-
-inline const std::string& Assembler::get_str(Token tok)
-{
-    return boost::get<std::string>(lex.table().at(tok.location()));
-}
-
-inline int Assembler::get_num(Token tok)
-{
-    return boost::get<int>(lex.table().at(tok.location()));
-}
-
-inline unsigned Assembler::get_unsigned(Token tok)
-{
-    return static_cast<unsigned>(get_num(tok));
-}
-
-
 
 #endif //MIPS_ASSEMBLER_H
