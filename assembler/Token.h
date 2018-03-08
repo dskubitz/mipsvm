@@ -48,6 +48,7 @@ enum class Opcode {
     SDC1 = 61, SDC2 = 62, LI=65, MOVE=66, LA=67,
 };
 extern const std::unordered_map<std::string, Opcode> opcodes;
+std::ostream& operator<<(std::ostream& os, Opcode code);
 
 enum class Funct {
     SLL = 0, SRL = 2, SRA = 3,

@@ -18,10 +18,10 @@ std::ostream& operator<<(std::ostream& os, const Token& token)
 std::string Source_location::to_string() const
 {
     return "Line " + std::to_string(line)
-            + ", Column " + std::to_string(column);
+           + ", Column " + std::to_string(column);
 }
 
-const std::unordered_map<std::string, Opcode> opcodes { //NOLINT
+const std::unordered_map<std::string, Opcode> opcodes{ //NOLINT
         {"add",     Opcode::R_TYPE},
         {"addi",    Opcode::ADDI},
         {"addu",    Opcode::R_TYPE},
@@ -76,7 +76,67 @@ const std::unordered_map<std::string, Opcode> opcodes { //NOLINT
         {"la",      Opcode::LA},
 };
 
-const std::unordered_map<std::string, Tag> reserved_words { //NOLINT
+std::ostream& operator<<(std::ostream& os, Opcode code)
+{
+    switch (code) {
+    case Opcode::J:
+        return os << "j";
+    case Opcode::JAL:
+        return os << "jal";
+    case Opcode::BEQ:
+        return os << "beq";
+    case Opcode::BNE:
+        return os << "bne";
+    case Opcode::BLEZ:
+        return os << "blez";
+    case Opcode::BGTZ:
+        return os << "bgtz";
+    case Opcode::ADDI:
+        return os << "addi";
+    case Opcode::ADDIU:
+        return os << "addiu";
+    case Opcode::SLTI:
+        return os << "slti";
+    case Opcode::SLTIU:
+        return os << "sltiu";
+    case Opcode::ANDI:
+        return os << "andi";
+    case Opcode::ORI:
+        return os << "ori";
+    case Opcode::XORI:
+        return os << "xori";
+    case Opcode::LUI:
+        return os << "lui";
+    case Opcode::LB:
+        return os << "lb";
+    case Opcode::LH:
+        return os << "lh";
+    case Opcode::LWL:
+        return os << "lwl";
+    case Opcode::LW:
+        return os << "lw";
+    case Opcode::LBU:
+        return os << "lbu";
+    case Opcode::LHU:
+        return os << "lhu";
+    case Opcode::LWR:
+        return os << "lwr";
+    case Opcode::SB:
+        return os << "sb";
+    case Opcode::SH:
+        return os << "sh";
+    case Opcode::SWL:
+        return os << "swl";
+    case Opcode::SW:
+        return os << "sw";
+    case Opcode::SWR:
+        return os << "swr";
+    default:
+        return os << "?";
+    }
+}
+
+const std::unordered_map<std::string, Tag> reserved_words{ //NOLINT
         {"add",     Tag::Instruction},
         {"addi",    Tag::Instruction},
         {"addu",    Tag::Instruction},
@@ -207,7 +267,7 @@ const std::unordered_map<std::string, Tag> reserved_words { //NOLINT
         {"$31",     Tag::Register},
 };
 
-const std::unordered_map<std::string, Funct> functs { //NOLINT
+const std::unordered_map<std::string, Funct> functs{ //NOLINT
         {"add",     Funct::ADD},
         {"addu",    Funct::ADDU},
         {"and",     Funct::AND},
@@ -262,12 +322,10 @@ std::ostream& operator<<(std::ostream& os, const Tag& tag)
         return os << '-';
     case Tag::COLON:
         return os << ':';
-    default:
-        return os;
     }
 }
 
-const std::unordered_map<std::string, Reg> registers {
+const std::unordered_map<std::string, Reg> registers{
         {"$zero", Reg::ZERO},
         {"$0",    Reg::ZERO},
         {"$at",   Reg::AT},
@@ -334,16 +392,16 @@ const std::unordered_map<std::string, Reg> registers {
         {"$31",   Reg::RA},
 };
 
-const std::unordered_map<std::string, Directive> directives { //NOLINT
-        {".align", Directive::ALIGN},
-        {".ascii", Directive::ASCII},
+const std::unordered_map<std::string, Directive> directives{ //NOLINT
+        {".align",  Directive::ALIGN},
+        {".ascii",  Directive::ASCII},
         {".asciiz", Directive::ASCIIZ},
-        {".byte", Directive::BYTE},
-        {".data", Directive::DATA},
+        {".byte",   Directive::BYTE},
+        {".data",   Directive::DATA},
         {".extern", Directive::EXTERN},
-        {".globl", Directive::GLOBL},
-        {".half", Directive::HALF},
-        {".space", Directive::SPACE},
-        {".text", Directive::TEXT},
-        {".word", Directive::WORD},
+        {".globl",  Directive::GLOBL},
+        {".half",   Directive::HALF},
+        {".space",  Directive::SPACE},
+        {".text",   Directive::TEXT},
+        {".word",   Directive::WORD},
 };

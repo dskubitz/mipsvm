@@ -1,8 +1,6 @@
 #include "Assembler.h"
-
-#include <iostream>
 #include <fstream>
-#include <sstream>
+#include <chrono>
 
 int main(int argc, char** argv)
 {
@@ -10,7 +8,7 @@ int main(int argc, char** argv)
     if (input.is_open()) {
         Lexer lexer(input);
         Assembler assembler(lexer);
-        return assembler.assemble();
+        return assembler.assemble(std::cout);
     }
     return 1;
 }
@@ -33,32 +31,79 @@ void Assembler::print_data_segment()
     std::cout << " ] \n";
 }
 
-int Assembler::assemble()
+int Assembler::assemble(std::ostream& output)
 {
     while (lookahead.tag() != Tag::Eof) {
-        parse_line();
+        try {
+            parse_line();
+        }
+        catch (std::exception& e) {
+            std::cerr << e.what() << '\n';
+            synchronize();
+        }
     }
-    std::cout << "Jump labels\n";
-    for (auto& i : jump_labels)
-        std::cout << '\t' << i.first << " " << i.second.addr << ' ' << i.second.seg << '\n';
 
+    if (error_occured)
+        return 1;
+
+    backpatch_references();
+    output_object(output);
+
+    return 0;
+}
+
+void Assembler::backpatch_references()
+{
     for (auto& i : branch_labels) {
         auto it = symbol_table.find(i.first);
         if (it != symbol_table.end())
             text_segment.at(i.second.addr >> 2) |= it->second.addr & 65535;
     }
-    std::cout << "Symbol table\n";
-    for (auto& i : symbol_table)
-        std::cout << '\t' << i.first << " " << i.second.addr << ' ' << i.second.seg << '\n';
 
-    std::cout << "Relocation table\n";
-    for (auto& i : relocation_table)
-        std::cout << '\t' << i.first << " " << i.second.addr << ' ' << i.second.seg << '\n';
-
-    for (size_t i = 0; i < text_segment.size(); ++i) {
-        printf("%04zx: %08x\n", i << 2, text_segment[i]);
+    for (auto& i : globals) {
+        auto it = symbol_table.find(i);
+        if (it != symbol_table.end()) {
+            symbol_table.at(it->first).vis = Visibility::Global;
+        }
     }
-    return 0;
+}
+
+void Assembler::output_object(std::ostream& output)
+{
+    output << ".text\t\t\t\tsize: "
+           << text_segment.size() << "\tsizeof: " << sizeof(uint32_t)
+           << std::setw(8) << "\naddress" << std::setw(8) << "inst\n"
+           << std::setw(8) << "-------- " << std::setw(9) << " --------\n";
+    output << std::hex << std::setfill('0');
+    int n = 0;
+    for (auto& i : text_segment) {
+        output << std::setw(8) << n << ": " << std::setw(8) << i << '\n';
+        n += 4;
+    }
+    output << std::dec << std::setfill(' ');
+
+    output << ".data\t\t\t\tsize: " << data_segment.size() << "\tsizeof: " << sizeof(uint8_t)
+           << std::setw(8) << "\naddress" << std::setw(8) << "data\n"
+           << std::setw(8) << "-------- " << std::setw(9) << " --------";
+
+    output << std::hex << std::setfill('0');
+    n = 0;
+    for (auto& i : data_segment) {
+        if (n % 4 == 0)
+            output << "\n" << std::setw(8) << n << ": ";
+        output << std::setw(2) << static_cast<int>(i) << ' ';
+        n++;
+    }
+    output << std::dec << std::setfill(' ') << '\n';
+
+    output << ".symbol\n";
+    for (auto& i : symbol_table)
+        std::cout << i.second << ' ' << i.first << '\n';
+
+    output << ".relocation\n";
+    for (auto& i : relocation_table) {
+        std::cout << i.first << std::internal << " " << i.second << '\n';
+    }
 }
 
 void Assembler::parse_line()
@@ -76,16 +121,7 @@ void Assembler::parse_line()
         parse_instruction();
         break;
     default:
-        if (lookahead.tag() == Tag::Identifier) {
-            std::cout << "skipping " << get<std::string>(lookahead) << '\n';
-
-        }
-        else {
-            std::cout << "skipping " << lookahead.tag() << '\n';
-
-        }
-        advance();
-        return;
+        error(Tag::Instruction);
     }
 }
 
@@ -97,7 +133,7 @@ void Assembler::parse_label()
 
 void Assembler::parse_instruction()
 {
-    const std::string& inst = get<std::string>(lookahead);
+    auto& inst = get<std::string>(lookahead);
     auto opcode = opcodes.at(inst);
     advance();
 
@@ -194,7 +230,7 @@ void Assembler::parse_rtype(Funct funct)
 void Assembler::parse_jtype(Opcode opcode)
 {
     Token identifier = consume(Tag::Identifier);
-    jump_labels[get<std::string>(identifier)] = current_address();
+    relocation_table[current_address()] = {opcode, get<std::string>(identifier)};
     write_jtype(opcode, 0);
 }
 
@@ -220,6 +256,15 @@ void Assembler::parse_itype(Opcode opcode)
         Token dest = consume(Tag::Register);
         Token target = consume(Tag::Register);
         write_rtype(get<int>(dest), 0, get<int>(target), 0, Funct::ADDU);
+        return;
+    }
+    case Opcode::LA: {
+        Token dest = consume(Tag::Register);
+        Token ident = consume(Tag::Identifier);
+        write_itype(Opcode::LUI, as_unsigned(Reg::AT), 0, 0);
+        relocation_table[current_address()] = {Opcode::LUI, get<std::string>(ident)};
+        write_itype(Opcode::ORI, get<int>(dest), as_unsigned(Reg::AT), 0);
+        relocation_table[current_address()] = {Opcode::ORI, get<std::string>(ident)};
         return;
     }
         // Branch instructions. These do not need to be entered in the
@@ -297,17 +342,12 @@ void Assembler::parse_itype(Opcode opcode)
             offset = get<int>(imm);
         }
         Token source = consume(Tag::Register);
+        if (offset > 65535) {
+            write_itype(Opcode::LUI, as_unsigned(Reg::AT), 0, (offset & 65535) << 16);
+            write_itype(Opcode::ORI, get<int>(dest), as_unsigned(Reg::AT), (offset & 65535));
+        }
 
         write_itype(opcode, get<int>(dest), get<int>(source), offset);
-        return;
-    }
-        // lui ori pair
-    case Opcode::LA: {
-        Token dest = consume(Tag::Register);
-        Token ident = consume(Tag::Identifier);
-        jump_labels[get<std::string>(ident)] = text_address;
-        write_itype(Opcode::LUI, as_unsigned(Reg::AT), 0, 0);
-        write_itype(Opcode::ORI, get<int>(dest), as_unsigned(Reg::AT), 0);
         return;
     }
 
@@ -333,7 +373,7 @@ void Assembler::parse_itype(Opcode opcode)
 
 void Assembler::parse_directive()
 {
-    const std::string& directive = get<std::string>(lookahead);
+    auto& directive = get<std::string>(lookahead);
     advance();
 
     Directive dir = directives.at(directive);
@@ -349,7 +389,7 @@ void Assembler::parse_directive()
             throw Parse_error("declaring data in text segment");
 
         Token string = consume(Tag::String);
-        const std::string& ascii = get<std::string>(string);
+        auto& ascii = get<std::string>(string);
 
         auto align = data_alignment;
 
@@ -361,7 +401,7 @@ void Assembler::parse_directive()
 
         // Add string to data segment
         std::copy(ascii.begin(), ascii.end(), std::back_inserter(data_segment));
-        for (size_t i = 0; i <= end - sz; ++i) data_segment.emplace_back(0);
+        for (size_t i = 0; i <= end - sz; ++i) data_segment.emplace_back();
 
         // Next data label will be at this address
         data_address = static_cast<uint32_t>(data_segment.size());
@@ -375,20 +415,69 @@ void Assembler::parse_directive()
         return;
     case Directive::GLOBL: {
         Token ident = consume(Tag::Identifier);
-        const std::string& label = get<std::string>(ident);
-        globals.insert(label);
+        auto& label = get<std::string>(ident);
+        globals.push_back(label);
         return;
     }
-        /*
-    case Directive::BYTE:
+    case Directive::BYTE: {
+        if (current_segment != Segment::Data)
+            throw Parse_error("declaring data in text segment");
+        int written = 0;
+        while (match(Tag::Immediate)) {
+            Token imm = advance();
+            auto val = static_cast<uint8_t>(get<int>(imm));
+            data_segment.push_back(val);
+            written += 1;
+        }
+        pad_remaining(written);
+        return;
+    }
+    case Directive::HALF: {
+        if (current_segment != Segment::Data)
+            throw Parse_error("declaring data in text segment");
+        int written = 0;
+        while (match(Tag::Immediate)) {
+            Token imm = advance();
+            auto val = static_cast<uint16_t>(get<int>(imm));
+            data_segment.push_back((val & (255 << 8)) >> 8);
+            data_segment.push_back(val & 255);
+            written += 2;
+        }
+        pad_remaining(written);
+        return;
+    }
+    case Directive::WORD: {
+        if (current_segment != Segment::Data)
+            throw Parse_error("declaring data in text segment");
+        int written = 0;
+        while (match(Tag::Immediate)) {
+            Token imm = advance();
+            auto val = static_cast<uint16_t>(get<int>(imm));
+            data_segment.push_back((val & (255 << 24)) >> 24);
+            data_segment.push_back((val & (255 << 16)) >> 16);
+            data_segment.push_back((val & (255 << 8)) >> 8);
+            data_segment.push_back(val & 255);
+            written += 4;
+        }
+        pad_remaining(written);
+        return;
+    }
     case Directive::EXTERN:
-    case Directive::HALF:
     case Directive::SPACE:
-    case Directive::WORD:
-        */
-    default:
         break;
     }
 }
+
+void Assembler::pad_remaining(int written)
+{
+    int amt = written / data_alignment * data_alignment;
+    if (amt < written) amt += data_alignment;
+    for (int i = 0; i < amt - written; ++i)
+        data_segment.emplace_back();
+
+    data_address = static_cast<uint32_t>(data_segment.size());
+}
+
+
 
 
