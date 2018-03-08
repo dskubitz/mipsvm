@@ -73,6 +73,7 @@ const std::unordered_map<std::string, Opcode> opcodes { //NOLINT
         {"syscall", Opcode::R_TYPE},
         {"li",      Opcode::LI},
         {"move",    Opcode::MOVE},
+        {"la",      Opcode::LA},
 };
 
 const std::unordered_map<std::string, Tag> reserved_words { //NOLINT
@@ -118,6 +119,7 @@ const std::unordered_map<std::string, Tag> reserved_words { //NOLINT
         {"lw",      Tag::Instruction},
         {"lui",     Tag::Instruction},
         {"li",      Tag::Instruction},
+        {"la",      Tag::Instruction},
         {"sb",      Tag::Instruction},
         {"sh",      Tag::Instruction},
         {"sw",      Tag::Instruction},

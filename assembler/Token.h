@@ -45,7 +45,7 @@ enum class Opcode {
     LL = 48, LWC1 = 49, LWC2 = 50, PREF = 51,
     LDC1 = 53, LDC2 = 54,
     SC = 56, SWC1 = 57, SWC2 = 58,
-    SDC1 = 61, SDC2 = 62, LI=65, MOVE=66,
+    SDC1 = 61, SDC2 = 62, LI=65, MOVE=66, LA=67,
 };
 extern const std::unordered_map<std::string, Opcode> opcodes;
 
