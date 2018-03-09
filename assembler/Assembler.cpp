@@ -11,19 +11,16 @@ std::string chop_file_extension(const char* file)
 
 int main(int argc, char** argv)
 {
-    /*
     if (argc != 2) {
         std::cerr << "usage: " << argv[0] << " file\n";
         return 1;
     }
     std::ifstream input(argv[1]);
-    */
-    std::ifstream input("test.asm");
     if (input.is_open()) {
-//        std::ofstream output(chop_file_extension(argv[1]) + ".o");
+        std::ofstream output(chop_file_extension(argv[1]) + ".o");
         Lexer lexer(input);
         Assembler assembler(lexer);
-        return assembler.assemble(std::cout);
+        return assembler.assemble(output);
     }
     std::cerr << "couldn't open file\n";
     return 1;
