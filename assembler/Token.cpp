@@ -21,7 +21,7 @@ std::string Source_location::to_string() const
            + ", Column " + std::to_string(column);
 }
 
-const std::unordered_map<std::string, Opcode> opcodes{ //NOLINT
+const std::unordered_map<std::string, Opcode> opcodes { //NOLINT
         {"add",     Opcode::R_TYPE},
         {"addi",    Opcode::ADDI},
         {"addu",    Opcode::R_TYPE},
@@ -131,12 +131,18 @@ std::ostream& operator<<(std::ostream& os, Opcode code)
         return os << "sw";
     case Opcode::SWR:
         return os << "swr";
+    case Opcode::LI:
+        return os << "li";
+    case Opcode::MOVE:
+        return os << "move";
+    case Opcode::LA:
+        return os << "la";
     default:
         return os << "?";
     }
 }
 
-const std::unordered_map<std::string, Tag> reserved_words{ //NOLINT
+const std::unordered_map<std::string, Tag> reserved_words { //NOLINT
         {"add",     Tag::Instruction},
         {"addi",    Tag::Instruction},
         {"addu",    Tag::Instruction},
@@ -267,7 +273,7 @@ const std::unordered_map<std::string, Tag> reserved_words{ //NOLINT
         {"$31",     Tag::Register},
 };
 
-const std::unordered_map<std::string, Funct> functs{ //NOLINT
+const std::unordered_map<std::string, Funct> functs { //NOLINT
         {"add",     Funct::ADD},
         {"addu",    Funct::ADDU},
         {"and",     Funct::AND},
@@ -297,6 +303,68 @@ const std::unordered_map<std::string, Funct> functs{ //NOLINT
         {"syscall", Funct::SYSCALL},
 };
 
+std::ostream& operator<<(std::ostream& os, Funct funct)
+{
+    switch (funct) {
+    case Funct::SLL:
+        return os << "sll";
+    case Funct::SRL:
+        return os << "srl";
+    case Funct::SRA:
+        return os << "sra";
+    case Funct::SLLV:
+        return os << "sllv";
+    case Funct::SRLV:
+        return os << "srlv";
+    case Funct::SRAV:
+        return os << "srav";
+    case Funct::JR:
+        return os << "jr";
+    case Funct::JALR:
+        return os << "jalr";
+    case Funct::SYSCALL:
+        return os << "syscall";
+    case Funct::MFHI:
+        return os << "mfhi";
+    case Funct::MTHI:
+        return os << "mthi";
+    case Funct::MFLO:
+        return os << "mflo";
+    case Funct::MTLO:
+        return os << "mtlo";
+    case Funct::MULT:
+        return os << "mult";
+    case Funct::MULTU:
+        return os << "multu";
+    case Funct::DIV:
+        return os << "div";
+    case Funct::DIVU:
+        return os << "divu";
+    case Funct::ADD:
+        return os << "add";
+    case Funct::ADDU:
+        return os << "addu";
+    case Funct::SUB:
+        return os << "sub";
+    case Funct::SUBU:
+        return os << "subu";
+    case Funct::AND:
+        return os << "and";
+    case Funct::OR:
+        return os << "or";
+    case Funct::XOR:
+        return os << "xor";
+    case Funct::NOR:
+        return os << "nor";
+    case Funct::SLT:
+        return os << "slt";
+    case Funct::SLTU:
+        return os << "sltu";
+    default:
+        return os << "?";
+    }
+}
+
 std::ostream& operator<<(std::ostream& os, const Tag& tag)
 {
     switch (tag) {
@@ -325,7 +393,7 @@ std::ostream& operator<<(std::ostream& os, const Tag& tag)
     }
 }
 
-const std::unordered_map<std::string, Reg> registers{
+const std::unordered_map<std::string, Reg> registers {
         {"$zero", Reg::ZERO},
         {"$0",    Reg::ZERO},
         {"$at",   Reg::AT},
@@ -392,7 +460,77 @@ const std::unordered_map<std::string, Reg> registers{
         {"$31",   Reg::RA},
 };
 
-const std::unordered_map<std::string, Directive> directives{ //NOLINT
+std::ostream& operator<<(std::ostream& os, Reg reg)
+{
+    switch (reg) {
+    case Reg::ZERO:
+        return os << "$zero";
+    case Reg::AT:
+        return os << "$at";
+    case Reg::V0:
+        return os << "$v0";
+    case Reg::V1:
+        return os << "$v1";
+    case Reg::A0:
+        return os << "$a0";
+    case Reg::A1:
+        return os << "$a1";
+    case Reg::A2:
+        return os << "$a2";
+    case Reg::A3:
+        return os << "$a3";
+    case Reg::T0:
+        return os << "$t0";
+    case Reg::T1:
+        return os << "$t1";
+    case Reg::T2:
+        return os << "$t2";
+    case Reg::T3:
+        return os << "$t3";
+    case Reg::T4:
+        return os << "$t4";
+    case Reg::T5:
+        return os << "$t5";
+    case Reg::T6:
+        return os << "$t6";
+    case Reg::T7:
+        return os << "$t7";
+    case Reg::S0:
+        return os << "$s0";
+    case Reg::S1:
+        return os << "$s1";
+    case Reg::S2:
+        return os << "$s2";
+    case Reg::S3:
+        return os << "$s3";
+    case Reg::S4:
+        return os << "$s4";
+    case Reg::S5:
+        return os << "$s5";
+    case Reg::S6:
+        return os << "$s6";
+    case Reg::S7:
+        return os << "$s7";
+    case Reg::T8:
+        return os << "$t8";
+    case Reg::T9:
+        return os << "$t9";
+    case Reg::K0:
+        return os << "$k0";
+    case Reg::K1:
+        return os << "$k1";
+    case Reg::GP:
+        return os << "$gp";
+    case Reg::SP:
+        return os << "$sp";
+    case Reg::FP:
+        return os << "$fp";
+    case Reg::RA:
+        return os << "$ra";
+    }
+}
+
+const std::unordered_map<std::string, Directive> directives { //NOLINT
         {".align",  Directive::ALIGN},
         {".ascii",  Directive::ASCII},
         {".asciiz", Directive::ASCIIZ},

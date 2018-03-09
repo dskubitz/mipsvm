@@ -44,8 +44,8 @@ inline std::ostream& operator<<(std::ostream& os, Visibility visibility)
 }
 
 // @formatter:off
-template<class ... T>
-struct all_integral : std::is_integral<typename std::common_type<T...>::type> { };
+//template<class ... T>
+//struct all_integral : std::is_integral<typename std::common_type<T...>::type> { };
 
 struct address_type {
     uint32_t addr;
@@ -108,7 +108,7 @@ private:
     Lexer& lex;
     Token lookahead;
 
-    Segment current_segment{Segment::Text};
+    Segment current_segment {Segment::Text};
 
     // Absolute address labels go here
     std::unordered_map<address_type, reloc_info> relocation_table;
@@ -122,12 +122,15 @@ private:
     // Which labels have been declared .globl
     std::vector<std::string> globals;
 
+    std::unordered_map<uint32_t, std::reference_wrapper<const std::string>> addr_to_label;
+
     std::vector<uint32_t> text_segment;
+    std::vector<std::string> instructions;
     std::vector<uint8_t> data_segment;
-    uint32_t text_address{0};
-    uint32_t data_address{0};
-    uint8_t data_alignment{4};
-    bool error_occured{false};
+    uint32_t text_address {0};
+    uint32_t data_address {0};
+    uint8_t data_alignment {4};
+    bool error_occured {false};
 
     void synchronize()
     {
@@ -155,6 +158,7 @@ private:
     template<class T>
     const T& get(Token tok)
     {
+        static T bad; // So clang wouldn't complain
         try {
             return boost::get<T>(lex.table().at(tok.location()));
         }
@@ -165,6 +169,7 @@ private:
                       << " at " << tok.location() << '\n';
             synchronize();
         }
+        return bad;
     }
 
     void print_data_segment();
@@ -180,32 +185,49 @@ private:
     void parse_itype(Opcode opcode);
     void parse_jtype(Opcode opcode);
 
-    template<class T1, class T2, class T3, class T4>
-    std::enable_if_t<all_integral<T1, T2, T3, T4>::value>
-    write_rtype(T1 dest, T2 source, T3 target, T4 shamt, Funct funct)
+    template<class... Ts>
+    std::string string_inst(Ts... args)
     {
-        uint32_t inst = ((source & 31) << 21) | ((target & 31) << 16)
-                        | ((dest & 31) << 11) | ((shamt & 31) << 6)
+        std::stringstream ss;
+        string_inst_impl(ss, args...);
+        return ss.str();
+    }
+
+    template<class T>
+    void string_inst_impl(std::ostream& os, T arg)
+    {
+        os << arg;
+    }
+
+    template<class T, class ...Ts>
+    void string_inst_impl(std::ostream& os, T arg, Ts... args)
+    {
+        os << arg;
+        string_inst_impl(os, args...);
+
+    }
+
+    void write_rtype(Reg dest, Reg source, Reg target, unsigned shamt, Funct funct)
+    {
+
+        uint32_t inst = ((as_integer(source) & 31) << 21) | ((as_integer(target) & 31) << 16)
+                        | ((as_integer(dest) & 31) << 11) | ((shamt & 31) << 6)
                         | (as_integer(funct) & 63);
 
         text_segment.push_back(inst);
         text_address += 4;
     }
 
-    template<class T1, class T2, class T3>
-    std::enable_if_t<all_integral<T1, T2, T3>::value>
-    write_itype(Opcode opcode, T1 dest, T2 source, T3 immediate)
+    void write_itype(Opcode opcode, Reg dest, Reg source, unsigned immediate)
     {
-        uint32_t inst = ((as_integer(opcode) & 63) << 26) | ((source & 31) << 21)
-                        | ((dest & 31) << 16) | (immediate & 65535);
+        uint32_t inst = ((as_integer(opcode) & 63) << 26) | ((as_integer(source) & 31) << 21)
+                        | ((as_integer(dest) & 31) << 16) | (immediate & 65535);
 
         text_segment.push_back(inst);
         text_address += 4;
     }
 
-    template<class T>
-    std::enable_if_t<all_integral<T>::value>
-    write_jtype(Opcode opcode, T addr)
+    void write_jtype(Opcode opcode, int addr)
     {
         uint32_t inst = ((as_integer(opcode) & 63) << 26) | (addr & 67108863U);
 
@@ -217,7 +239,7 @@ private:
 };
 
 inline Assembler::Assembler(Lexer& lexer)
-        : lex(lexer), lookahead(lex.scan()) { }
+        :lex(lexer), lookahead(lex.scan()) { }
 
 inline void Assembler::error(Tag expected)
 {

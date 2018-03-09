@@ -98,7 +98,8 @@ unsigned as_unsigned(Enum value)
 }
 
 std::ostream& operator<<(std::ostream& os, const Tag& tag);
-
+std::ostream& operator<<(std::ostream& os, Reg reg);
+std::ostream& operator<<(std::ostream& os, Funct funct);
 
 struct Source_location {
     unsigned int line;

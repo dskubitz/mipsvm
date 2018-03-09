@@ -107,9 +107,10 @@ Token Lexer::scan_keyword_or_identifier(int ch)
     auto word = reserved_words.find(lexeme);
 
     if (word != reserved_words.end()) {
+        // Check if its a register
         auto regit = registers.find(lexeme);
         if (regit != registers.end()) {
-            table_[location_] = as_integer(regit->second);
+            table_[location_] = regit->second;
         }
         else {
             table_[location_] = lexeme;

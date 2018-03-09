@@ -21,7 +21,7 @@ struct Lexer_error : public std::runtime_error {
 
 class Lexer {
 public:
-    using Variant = boost::variant<int, std::string>;
+    using Variant = boost::variant<int, std::string, Reg>;
 
     explicit Lexer(std::istream& input);
     Token scan();
