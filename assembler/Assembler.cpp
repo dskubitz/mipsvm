@@ -1,4 +1,5 @@
 #include "Assembler.h"
+
 #include <fstream>
 
 std::string chop_file_extension(const char* file)
@@ -20,7 +21,7 @@ int main(int argc, char** argv)
         std::ofstream output(chop_file_extension(argv[1]) + ".o");
         Lexer lexer(input);
         Assembler assembler(lexer);
-        return assembler.assemble(output);
+        return assembler.assemble(std::cout);
     }
     std::cerr << "couldn't open file\n";
     return 1;
@@ -295,11 +296,11 @@ void Assembler::parse_itype(Opcode opcode)
         auto dest = get<Reg>(consume(Tag::Register));
         auto& ident = get<std::string>(consume(Tag::Identifier));
 
-        write_itype(Opcode::LUI, Reg::AT, Reg::ZERO, 0);
         relocation_table[current_address()] = {Opcode::LUI, ident};
+        write_itype(Opcode::LUI, Reg::AT, Reg::ZERO, 0);
 
-        write_itype(Opcode::ORI, dest, Reg::AT, 0);
         relocation_table[current_address()] = {Opcode::ORI, ident};
+        write_itype(Opcode::ORI, dest, Reg::AT, 0);
 
         instructions.push_back(string_inst(opcode, "  \t", dest, ',', ident));
         instructions.emplace_back();
