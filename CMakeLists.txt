@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.9)
-project(mips C)
+project(mips)
 
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 
 add_definitions(-DDEBUG)
 add_subdirectory(assembler)
 add_subdirectory(linker)
-add_executable(mips main.c mips.h debug.h common.h mips.c debug.c mem.h mem.c)
+
+add_executable(mips main.cpp mips.h debug.h common.h mips.cpp debug.cpp mem.h mem.cpp)

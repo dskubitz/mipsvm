@@ -21,7 +21,7 @@ int main(int argc, char** argv)
         std::ofstream output(chop_file_extension(argv[1]) + ".o");
         Lexer lexer(input);
         Assembler assembler(lexer);
-        return assembler.assemble(std::cout);
+        return assembler.assemble(output);
     }
     std::cerr << "couldn't open file\n";
     return 1;
@@ -385,6 +385,10 @@ void Assembler::parse_itype(Opcode opcode)
             offset = get<int>(advance());
         }
         auto source = get<Reg>(consume(Tag::Register));
+
+        if (dest == Reg::GP
+            || source == Reg::GP); // Need to figure out relocation info for lw/sw to vars in static area
+
         if (offset > 65535) {
             write_itype(Opcode::LUI, Reg::AT, Reg::ZERO, (offset & 65535) << 16);
             write_itype(Opcode::ORI, dest, Reg::AT, offset & 65535);

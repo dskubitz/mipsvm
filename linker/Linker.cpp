@@ -8,10 +8,10 @@
 
 template<typename T>
 typename std::enable_if<std::is_integral<T>::value>::type
-output_hex(T val)
+output_hex(std::ostream& os, T val)
 {
-    std::cout << std::setfill('0') << std::hex << std::setw(2 * sizeof(T))
-              << static_cast<int>(val) << std::dec << std::setfill(' ');
+    os << std::setfill('0') << std::hex << std::setw(2 * sizeof(T))
+       << static_cast<int>(val) << std::dec << std::setfill(' ');
 }
 
 std::string chop_file_extension(const char* cstr)
@@ -32,37 +32,83 @@ int main(int argc, char** argv)
 
 int Linker::link(int argc, char** argv)
 {
+    const char* output_name = "axx.out";
     for (int i = 1; i < argc; ++i) {
         const char* arg = argv[i];
+        if (strcmp(arg, "-o") == 0 && i + 1 < argc) {
+            output_name = argv[i + 1];
+            i += 1;
+            continue;
+        }
         std::ifstream input(arg);
         if (input.is_open()) {
-            auto obj_name = chop_file_extension(arg);
-            text_offset = text_segment.size() << 2;
-            data_offset = data_segment.size();
+            offsets.emplace_back(
+                    chop_file_extension(arg),
+                    text_segment.size() << 2,
+                    data_segment.size() << 2);
             auto file = preprocess(input);
             read_file(file);
-        }
-        else {
+        } else {
             std::cerr << "failed to open file " << arg << ", aborting...\n";
             return 2;
         }
     }
-    for (int i = 0; i < text_segment.size();) {
-        output_hex(i << 2);
-        std::cout << ": ";
-        output_hex(text_segment[i++]);
-        std::cout << '\n';
-    }
-    for (int i = 0; i < data_segment.size();) {
-        if (i % 4 == 0) {
-            std::cout << '\n';
-            output_hex(i);
-            std::cout << ": ";
-        }
-        output_hex(data_segment[i++]);
-        std::cout << ' ';
+
+    relocate_references();
+
+    std::ofstream output(output_name, std::ios_base::trunc);
+    output << ".text ";
+    output_hex(output, text_start << 2);
+    output << " .data ";
+    output_hex(output, data_start << 2);
+    output << " length ";
+    output_hex(output, static_cast<int>(linked.size() << 2));
+    output << '\n';
+
+    for (int i = 0; i < linked.size(); ++i) {
+        output_hex(output, linked[i]);
+        output << '\n';
+
     }
     return 0;
+}
+
+void Linker::relocate_references()
+{
+    text_start = 0;
+    data_start = text_segment.size();
+
+    // Concatenate text segment to data segment.
+    linked.assign(text_segment.begin(), text_segment.end());
+    for (int i = 0; i < data_segment.size(); i++)
+        linked.push_back(data_segment[i].u);
+
+    // Relocate all data label addresses
+    for (auto& i : globals)
+        if (i.second.segment == Segment::Data)
+            i.second.address += data_start << 2;
+    for (auto& frame : offsets)
+        for (auto& i : frame.locals)
+            if (i.second.segment == Segment::Data)
+                i.second.address += data_start << 2;
+
+    for (auto& item : relocation_info) {
+        if (item.scope == "global") {
+            try {
+                resolve(globals.at(item.label), item);
+            }
+            catch (std::out_of_range& e) {
+                std::cerr << "unresolved reference\n";
+                exit(1);
+            }
+        } else {
+            for (auto& frame : offsets) {
+                if (item.scope == frame.name) {
+                    resolve(frame.locals.at(item.label), item);
+                }
+            }
+        }
+    }
 }
 
 std::stringstream Linker::preprocess(std::istream& input)
@@ -80,9 +126,8 @@ std::stringstream Linker::preprocess(std::istream& input)
     std::stringstream ss;
     for (std::string line; std::getline(input, line);) {
         std::sregex_iterator it(line.begin(), line.end(), pattern), end = std::sregex_iterator();
-        for (; it != end; ++it) {
+        for (; it != end; ++it)
             ss << it->str() << '\n';
-        }
     }
     return ss;
 }
@@ -127,12 +172,8 @@ void Linker::read_text_line(std::istream& input)
 {
     std::string addr;
     std::string instr;
-    if (input >> addr >> instr) {
-        std::cout << addr << ' ' << instr << ' ';
-        output_hex(static_cast<uint32_t>(std::stoll(instr, nullptr, 16)));
+    if (input >> addr >> instr)
         text_segment.push_back(static_cast<uint32_t>(std::stoll(instr, nullptr, 16)));
-        std::cout << '\n';
-    }
 }
 
 void Linker::read_data_line(std::istream& input)
@@ -140,54 +181,60 @@ void Linker::read_data_line(std::istream& input)
     std::string addr;
     std::string byte0, byte1, byte2, byte3;
     if (input >> addr >> byte0 >> byte1 >> byte2 >> byte3) {
-        std::cout << addr << ' ' << byte0 << ' ' << byte1 << ' ' << byte2 << ' ' << byte3 << ' ';
-        output_hex(static_cast<uint8_t>(std::stoll(byte0, nullptr, 16)));
-        data_segment.push_back(static_cast<uint8_t>(std::stoll(byte0, nullptr, 16)));
-        data_segment.push_back(static_cast<uint8_t>(std::stoll(byte1, nullptr, 16)));
-        data_segment.push_back(static_cast<uint8_t>(std::stoll(byte2, nullptr, 16)));
-        data_segment.push_back(static_cast<uint8_t>(std::stoll(byte3, nullptr, 16)));
-        std::cout << ' ';
-        output_hex(static_cast<uint8_t>(std::stoll(byte1, nullptr, 16)));
-        std::cout << ' ';
-        output_hex(static_cast<uint8_t>(std::stoll(byte2, nullptr, 16)));
-        std::cout << ' ';
-        output_hex(static_cast<uint8_t>(std::stoll(byte3, nullptr, 16)));
-        std::cout << '\n';
+        data_segment.emplace_back();
+        auto& word = data_segment.back();
+        word.b[0] = static_cast<uint8_t>(std::stoll(byte0, nullptr, 16));
+        word.b[1] = static_cast<uint8_t>(std::stoll(byte1, nullptr, 16));
+        word.b[2] = static_cast<uint8_t>(std::stoll(byte2, nullptr, 16));
+        word.b[3] = static_cast<uint8_t>(std::stoll(byte3, nullptr, 16));
     }
 }
 
 void Linker::read_symbol_line(std::istream& input)
 {
     std::string address, segment, visibility, label;
-    input >> address >> segment >> visibility >> label;
-    uint32_t addr = std::stoul(address, nullptr, 16);
-    addr += segment == "text" ? text_offset : data_offset;
-    std::cout << ' ' << label << " -> " << addr << '\n';
-    bool unique = segment == "text"
-                  ? text_labels.insert({label, addr}).second
-                  : data_labels.insert({label, addr}).second;
-    if (!unique) {
-        std::cerr << "duplicate symbols\n";
+    if (input >> address >> segment >> visibility >> label) {
+        Offset& offset = offsets.back();
+        uint32_t addr = std::stoul(address, nullptr, 16);
+
+        Segment seg = segment == "text" ? Segment::Text : Segment::Data;
+        addr += seg == Segment::Text ? offset.text_offset : offset.data_offset;
+
+        if (visibility == "local")
+            offset.locals.insert({label, SymbolInfo(addr, seg)});
+        else if (!globals.insert({label, SymbolInfo(addr, seg)}).second)
+            std::cerr << "duplicate symbols\n";
+
     }
 }
 
 void Linker::read_relocation_line(std::istream& input)
 {
     std::string address, segment, visibility, instruction, label;
-    input >> address >> segment >> visibility >> instruction >> label;
+    if (input >> address >> segment >> visibility >> instruction >> label) {
+        Offset& offset = offsets.back();
+        uint32_t addr = std::stoul(address, nullptr, 16);
+        addr += segment == "text" ? offset.text_offset : offset.data_offset;
 
-    uint32_t addr = std::stoul(address, nullptr, 16);
-    addr += segment == "text" ? text_offset : data_offset;
-
-    // Absolute Address
-    if (instruction == "j" || instruction == "jal") {
-        std::cout << "instruction " << instruction << " at " << addr << " depends on " << label << '\n';
-        relocation_info.push_back(std::make_tuple(addr, instruction, label));
-    }
-        // External reference
-    else if (instruction == "lui" || instruction == "ori") {
-        std::cout << "instruction " << instruction << " at " << addr << " depends on " << label << '\n';
-        relocation_info.push_back(std::make_tuple(addr, instruction, label));
+        auto it = offset.locals.find(label);
+        if (it != offset.locals.end())
+            relocation_info.emplace_back(addr, instruction, offset.name, label);
+        else
+            relocation_info.emplace_back(addr, instruction, "global", label);
 
     }
 }
+
+void Linker::resolve(SymbolInfo& symbol, RelocationInfo& reloc)
+{
+    if (reloc.instruction == Instruction::J || reloc.instruction == Instruction::JAL)
+        //26 bit mask to the instruction at reloc.address>>2
+        linked.at(reloc.address >> 2) |= (symbol.address >> 2) & 67108863;
+    else if (reloc.instruction == Instruction::LUI || reloc.instruction == Instruction::ORI)
+        //16 bit mask to the instruction at reloc.address>>2
+        linked.at(reloc.address >> 2) |= symbol.address & 0xFFFF;
+
+}
+
+
+

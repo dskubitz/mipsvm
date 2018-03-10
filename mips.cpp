@@ -2,7 +2,6 @@
 
 #include "debug.h"
 #include "mips.h"
-#include "mem.h"
 
 #ifdef DEBUG
 #define DEBUG_PRINT(...) printf(__VA_ARGS__)
@@ -21,7 +20,7 @@ void execute(memory_t* memory)
     inst_t* PC = memory->text_segment;
     inst_t* end = memory->data_segment;
 
-    int8_t op, rs, rt, rd, shamt, funct;
+    uint32_t op, rs, rt, rd, shamt, funct;
     int32_t imm;
 
     while (PC != end) {
@@ -138,6 +137,7 @@ void execute(memory_t* memory)
                 core.lo = core.reg[rs];
                 break;
             case F_syscall:
+                DEBUG_PRINT("syscall ", reg_str(rs));
                 switch (core.v0) {
                 case 1:
                     printf("%d", core.a0);
@@ -145,7 +145,7 @@ void execute(memory_t* memory)
                 case 2: // print float
                 case 3: // print double
                 case 4: // print string
-                    error("unsupported syscall: %d", core.a0);
+                    break;
                 case 5:
                     scanf("%d", &core.v0); // NOLINT
                     break;
