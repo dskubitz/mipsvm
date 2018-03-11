@@ -18,7 +18,7 @@ int main(int argc, char** argv)
     }
     std::ifstream input(argv[1]);
     if (input.is_open()) {
-        std::ofstream output(chop_file_extension(argv[1]) + ".o");
+        std::ofstream output(chop_file_extension(argv[1]) + ".o", std::ios_base::trunc);
         Lexer lexer(input);
         Assembler assembler(lexer);
         return assembler.assemble(output);
@@ -35,8 +35,7 @@ void Assembler::print_data_segment()
         auto c = data_segment[i++];
         if (isprint(c)) {
             std::cout << c << ' ';
-        }
-        else {
+        } else {
             std::cout << static_cast<int>(c) << ' ';
         }
         if (i % data_alignment == 0)
@@ -180,10 +179,10 @@ void Assembler::parse_rtype(Funct funct)
     case Funct::SLL:
     case Funct::SRL:
     case Funct::SRA: {
-        auto dest = get<Reg>(consume(Tag::Register));
-        auto source = get<Reg>(consume(Tag::Register));
+        auto dest = get<Register>(consume(Tag::Register));
+        auto source = get<Register>(consume(Tag::Register));
         auto imm = get<int>(consume(Tag::Immediate));
-        write_rtype(dest, Reg::ZERO, source, imm, funct);
+        write_rtype(dest, Register::ZERO, source, imm, funct);
         instructions.push_back(string_inst(funct, "  \t", dest, ',', source, ',', imm));
         return;
     }
@@ -200,24 +199,24 @@ void Assembler::parse_rtype(Funct funct)
     case Funct::SLLV:
     case Funct::SRLV:
     case Funct::SRAV: {
-        auto dest = get<Reg>(consume(Tag::Register));
-        auto source = get<Reg>(consume(Tag::Register));
-        auto target = get<Reg>(consume(Tag::Register));
+        auto dest = get<Register>(consume(Tag::Register));
+        auto source = get<Register>(consume(Tag::Register));
+        auto target = get<Register>(consume(Tag::Register));
         write_rtype(dest, source, target, 0, funct);
         instructions.push_back(string_inst(funct, "  \t", dest, ',', source, ',', target));
         return;
     }
     case Funct::MFLO:
     case Funct::MFHI: {
-        auto dest = get<Reg>(consume(Tag::Register));
-        write_rtype(dest, Reg::ZERO, Reg::ZERO, 0, funct);
+        auto dest = get<Register>(consume(Tag::Register));
+        write_rtype(dest, Register::ZERO, Register::ZERO, 0, funct);
         instructions.push_back(string_inst(funct, "  \t", dest));
         return;
     }
     case Funct::MTLO:
     case Funct::MTHI: {
-        auto source = get<Reg>(consume(Tag::Register));
-        write_rtype(Reg::ZERO, source, Reg::ZERO, 0, funct);
+        auto source = get<Register>(consume(Tag::Register));
+        write_rtype(Register::ZERO, source, Register::ZERO, 0, funct);
         instructions.push_back(string_inst(funct, "  \t", source));
         return;
     }
@@ -225,28 +224,28 @@ void Assembler::parse_rtype(Funct funct)
     case Funct::MULTU:
     case Funct::DIV:
     case Funct::DIVU: {
-        auto source = get<Reg>(consume(Tag::Register));
-        auto target = get<Reg>(consume(Tag::Register));
-        write_rtype(Reg::ZERO, source, target, 0, funct);
+        auto source = get<Register>(consume(Tag::Register));
+        auto target = get<Register>(consume(Tag::Register));
+        write_rtype(Register::ZERO, source, target, 0, funct);
         instructions.push_back(string_inst(funct, "  \t", source, ',', target));
         return;
     }
     case Funct::JR: {
-        auto source = get<Reg>(consume(Tag::Register));
-        write_rtype(Reg::ZERO, source, Reg::ZERO, 0, funct);
+        auto source = get<Register>(consume(Tag::Register));
+        write_rtype(Register::ZERO, source, Register::ZERO, 0, funct);
         instructions.push_back(string_inst(funct, "  \t", source));
         return;
     }
     case Funct::JALR: {
-        auto source = get<Reg>(consume(Tag::Register));
-        auto dest = get<Reg>(consume(Tag::Register));
-        write_rtype(dest, source, Reg::ZERO, 0, funct);
+        auto source = get<Register>(consume(Tag::Register));
+        auto dest = get<Register>(consume(Tag::Register));
+        write_rtype(dest, source, Register::ZERO, 0, funct);
         instructions.push_back(string_inst(funct, "  \t", dest, ',', source));
         return;
     }
     case Funct::SYSCALL: {
         // There is supposed to be exception information in this
-        write_rtype(Reg::ZERO, Reg::ZERO, Reg::ZERO, 0, funct);
+        write_rtype(Register::ZERO, Register::ZERO, Register::ZERO, 0, funct);
         instructions.push_back(string_inst(funct));
         return;
     }
@@ -268,39 +267,38 @@ void Assembler::parse_itype(Opcode opcode)
     // I'll try to keep pseudoinstructions near the front of this.
     switch (opcode) {
     case Opcode::LI: {
-        auto dest = get<Reg>(consume(Tag::Register));
+        auto dest = get<Register>(consume(Tag::Register));
         auto imm = get<int>(consume(Tag::Immediate));
 
-        if (imm > 65535) { // Wont fit in half-word
-            write_itype(Opcode::LUI, Reg::AT, Reg::ZERO, (imm & 65535) << 16);
-            write_itype(Opcode::ORI, dest, Reg::AT, imm & 65535);
+        if (imm > Bitmask<16>::value) { // Wont fit in half-word
+            write_itype(Opcode::LUI, Register::AT, Register::ZERO, (imm & Bitmask<16>::value) << 16);
+            write_itype(Opcode::ORI, dest, Register::AT, imm & Bitmask<16>::value);
             instructions.push_back(string_inst(opcode, "  \t", dest, ',', imm));
             instructions.emplace_back();
             return;
-        }
-        else {
-            write_itype(Opcode::ADDIU, dest, Reg::ZERO, imm);
+        } else {
+            write_itype(Opcode::ADDIU, dest, Register::ZERO, imm);
             instructions.push_back(string_inst(opcode, "  \t", dest, ',', imm));
         }
         return;
     }
     case Opcode::MOVE: {
-        auto dest = get<Reg>(consume(Tag::Register));
-        auto target = get<Reg>(consume(Tag::Register));
-        write_rtype(dest, Reg::ZERO, target, 0, Funct::ADDU);
+        auto dest = get<Register>(consume(Tag::Register));
+        auto target = get<Register>(consume(Tag::Register));
+        write_rtype(dest, Register::ZERO, target, 0, Funct::ADDU);
         instructions.push_back(string_inst(opcode, "  \t", dest, ',', target));
 
         return;
     }
     case Opcode::LA: {
-        auto dest = get<Reg>(consume(Tag::Register));
+        auto dest = get<Register>(consume(Tag::Register));
         auto& ident = get<std::string>(consume(Tag::Identifier));
 
         relocation_table[current_address()] = {Opcode::LUI, ident};
-        write_itype(Opcode::LUI, Reg::AT, Reg::ZERO, 0);
+        write_itype(Opcode::LUI, Register::AT, Register::ZERO, 0);
 
         relocation_table[current_address()] = {Opcode::ORI, ident};
-        write_itype(Opcode::ORI, dest, Reg::AT, 0);
+        write_itype(Opcode::ORI, dest, Register::AT, 0);
 
         instructions.push_back(string_inst(opcode, "  \t", dest, ',', ident));
         instructions.emplace_back();
@@ -312,8 +310,8 @@ void Assembler::parse_itype(Opcode opcode)
     case Opcode::BNE:
     case Opcode::BLEZ:
     case Opcode::BGTZ: {
-        auto dest = get<Reg>(consume(Tag::Register));
-        auto source = get<Reg>(consume(Tag::Register));
+        auto dest = get<Register>(consume(Tag::Register));
+        auto source = get<Register>(consume(Tag::Register));
         auto& identifier = get<std::string>(consume(Tag::Identifier));
 
         auto it = symbol_table.find(identifier);
@@ -327,8 +325,7 @@ void Assembler::parse_itype(Opcode opcode)
 
             auto imm_val = (address.addr - text_address) >> 2;
             write_itype(opcode, source, dest, imm_val);
-        }
-        else { // We need to wait to resolve it
+        } else { // We need to wait to resolve it
             branch_labels[identifier] = current_address();
             write_itype(opcode, source, dest, 0);
         }
@@ -343,14 +340,13 @@ void Assembler::parse_itype(Opcode opcode)
     case Opcode::ANDI:
     case Opcode::ORI:
     case Opcode::XORI: {
-        auto dest = get<Reg>(consume(Tag::Register));
-        auto source = get<Reg>(consume(Tag::Register));
+        auto dest = get<Register>(consume(Tag::Register));
+        auto source = get<Register>(consume(Tag::Register));
         int imm = 0;
         if (match(Tag::MINUS)) {
             advance();
             imm = -get<int>(consume(Tag::Immediate));
-        }
-        else {
+        } else {
             imm = get<int>(consume(Tag::Immediate));
         }
         write_itype(opcode, dest, source, imm);
@@ -359,9 +355,9 @@ void Assembler::parse_itype(Opcode opcode)
         return;
     }
     case Opcode::LUI: {
-        auto dest = get<Reg>(consume(Tag::Register));
+        auto dest = get<Register>(consume(Tag::Register));
         auto imm = get<int>(consume(Tag::Immediate));
-        write_itype(opcode, dest, Reg::ZERO, imm);
+        write_itype(opcode, dest, Register::ZERO, imm);
 
         instructions.push_back(string_inst(opcode, "  \t", dest, ",", imm));
         return;
@@ -378,28 +374,27 @@ void Assembler::parse_itype(Opcode opcode)
     case Opcode::SWL:
     case Opcode::SW:
     case Opcode::SWR: {
-        auto dest = get<Reg>(consume(Tag::Register));
+        auto dest = get<Register>(consume(Tag::Register));
         int offset = 0;
 
         if (match(Tag::Immediate)) {
             offset = get<int>(advance());
         }
-        auto source = get<Reg>(consume(Tag::Register));
+        auto source = get<Register>(consume(Tag::Register));
 
-        if (dest == Reg::GP
-            || source == Reg::GP); // Need to figure out relocation info for lw/sw to vars in static area
+        if (dest == Register::GP
+            || source == Register::GP); // Need to figure out relocation info for lw/sw to vars in static area
 
-        if (offset > 65535) {
-            write_itype(Opcode::LUI, Reg::AT, Reg::ZERO, (offset & 65535) << 16);
-            write_itype(Opcode::ORI, dest, Reg::AT, offset & 65535);
+        if (offset > Bitmask<16>::value) {
+            write_itype(Opcode::LUI, Register::AT, Register::ZERO, (offset & Bitmask<16>::value) << 16);
+            write_itype(Opcode::ORI, dest, Register::AT, offset & Bitmask<16>::value);
             if (offset)
                 instructions.push_back(string_inst(opcode, "  \t", dest, ",", offset, '(', source, ')'));
             else
                 instructions.push_back(string_inst(opcode, "  \t", dest, ",(", source, ')'));
-            instructions.push_back("");
+            instructions.emplace_back();
 
-        }
-        else {
+        } else {
             if (offset)
                 instructions.push_back(string_inst(opcode, "  \t", dest, ",", offset, '(', source, ')'));
             else
@@ -482,8 +477,8 @@ void Assembler::parse_directive()
         while (match(Tag::Immediate)) {
             Token imm = advance();
             auto val = static_cast<uint16_t>(get<int>(imm));
-            data_segment.push_back((val & (255 << 8)) >> 8);
-            data_segment.push_back(val & 255);
+            data_segment.push_back((val & (Bitmask<8>::value << 8)) >> 8);
+            data_segment.push_back(val & Bitmask<8>::value);
             written += 2;
         }
         pad_remaining(written);
@@ -496,10 +491,10 @@ void Assembler::parse_directive()
         while (match(Tag::Immediate)) {
             Token imm = advance();
             auto val = static_cast<uint16_t>(get<int>(imm));
-            data_segment.push_back((val & (255 << 24)) >> 24);
-            data_segment.push_back((val & (255 << 16)) >> 16);
-            data_segment.push_back((val & (255 << 8)) >> 8);
-            data_segment.push_back(val & 255);
+            data_segment.push_back((val & (Bitmask<8>::value << 24)) >> 24);
+            data_segment.push_back((val & (Bitmask<8>::value << 16)) >> 16);
+            data_segment.push_back((val & (Bitmask<8>::value << 8)) >> 8);
+            data_segment.push_back(val & Bitmask<8>::value);
             written += 4;
         }
         pad_remaining(written);

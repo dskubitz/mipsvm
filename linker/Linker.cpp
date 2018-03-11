@@ -227,13 +227,12 @@ void Linker::read_relocation_line(std::istream& input)
 
 void Linker::resolve(SymbolInfo& symbol, RelocationInfo& reloc)
 {
-    if (reloc.instruction == Instruction::J || reloc.instruction == Instruction::JAL)
+    if (reloc.instruction == Opcode::J || reloc.instruction == Opcode::JAL)
         //26 bit mask to the instruction at reloc.address>>2
         linked.at(reloc.address >> 2) |= (symbol.address >> 2) & 67108863;
-    else if (reloc.instruction == Instruction::LUI || reloc.instruction == Instruction::ORI)
+    else if (reloc.instruction == Opcode::LUI || reloc.instruction == Opcode::ORI)
         //16 bit mask to the instruction at reloc.address>>2
         linked.at(reloc.address >> 2) |= symbol.address & 0xFFFF;
-
 }
 
 

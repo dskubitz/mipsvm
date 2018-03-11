@@ -21,20 +21,20 @@ struct Lexer_error : public std::runtime_error {
 
 class Lexer {
 public:
-    using Variant = boost::variant<int, std::string, Reg>;
+    using Variant = boost::variant<int, std::string, Register>;
 
     explicit Lexer(std::istream& input);
     Token scan();
 
-    const std::unordered_map<Source_location, Variant>& table() const noexcept
+    const std::unordered_map<SourceLocation, Variant>& table() const noexcept
     { return table_; }
 
 private:
-    std::unordered_map<Source_location, Variant> table_;
+    std::unordered_map<SourceLocation, Variant> table_;
     std::istream& input_;
     unsigned int line_;
     unsigned int column_;
-    Source_location location_;
+    SourceLocation location_;
 
     Token scan_number(int ch);
     Token scan_directive(int ch);

@@ -2,8 +2,11 @@
 #define LINKER_H
 
 #include <cstddef>
+#include <utility>
 #include <vector>
 #include <unordered_map>
+
+#include <Opcode.h>
 
 enum class Visibility : bool {
     Global, Local,
@@ -33,24 +36,6 @@ inline std::ostream& operator<<(std::ostream& os, Segment seg)
     }
 }
 
-enum class Instruction : uint8_t {
-    JAL, J, LUI, ORI,
-};
-
-inline std::ostream& operator<<(std::ostream& os, Instruction inst)
-{
-    switch (inst) {
-    case Instruction::JAL:
-        return os << "jal";
-    case Instruction::J:
-        return os << "j";
-    case Instruction::LUI:
-        return os << "lui";
-    case Instruction::ORI:
-        return os << "ori";
-    }
-}
-
 struct SymbolInfo {
     uint32_t address;
     Segment segment;
@@ -61,26 +46,26 @@ struct SymbolInfo {
 
 struct RelocationInfo {
     uint32_t address;
-    Instruction instruction;
+    Opcode instruction;
     std::string scope;
     std::string label;
 
     RelocationInfo(
             uint32_t address,
             const std::string& inst,
-            const std::string& scope,
-            const std::string& label
+            std::string scope,
+            std::string label
     )
-            : address(address), scope(scope), label(label)
+            : address(address), scope(std::move(scope)), label(std::move(label))
     {
         if (inst == "jal")
-            instruction = Instruction::JAL;
+            instruction = Opcode::JAL;
         else if (inst == "j")
-            instruction = Instruction::J;
+            instruction = Opcode::J;
         else if (inst == "lui")
-            instruction = Instruction::LUI;
+            instruction = Opcode::LUI;
         else if (inst == "ori")
-            instruction = Instruction::ORI;
+            instruction = Opcode::ORI;
         else {
             throw std::runtime_error{"bad instruction argument"};
         }

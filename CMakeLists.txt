@@ -3,8 +3,8 @@ project(mips)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_definitions(-DDEBUG)
 add_subdirectory(assembler)
 add_subdirectory(linker)
-
-add_executable(mips main.cpp mips.h debug.h common.h mips.cpp debug.cpp mem.h mem.cpp)
+add_subdirectory(vm)
+add_subdirectory(common)
+include_directories(${NESTED_DIRS})

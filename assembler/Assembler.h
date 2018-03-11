@@ -4,11 +4,12 @@
 #include <iostream>
 #include <iomanip>
 #include <vector>
+#include <sstream>
 
 #include <boost/variant/get.hpp>
 #include <boost/type_index.hpp>
-#include <sstream>
 #include "Lexer.h"
+#include <Bitmask.h>
 
 struct Parse_error : std::runtime_error {
     using std::runtime_error::runtime_error;
@@ -207,21 +208,24 @@ private:
 
     }
 
-    void write_rtype(Reg dest, Reg source, Reg target, unsigned shamt, Funct funct)
+    void write_rtype(Register dest, Register source, Register target, unsigned shamt, Funct funct)
     {
-
-        uint32_t inst = ((as_integer(source) & 31) << 21) | ((as_integer(target) & 31) << 16)
-                        | ((as_integer(dest) & 31) << 11) | ((shamt & 31) << 6)
-                        | (as_integer(funct) & 63);
+        uint32_t inst = ((as_integer(source) & Bitmask<5>::value) << 21)
+                        | ((as_integer(target) & Bitmask<5>::value) << 16)
+                        | ((as_integer(dest) & Bitmask<5>::value) << 11)
+                        | ((shamt & Bitmask<5>::value) << 6)
+                        | (as_integer(funct) & Bitmask<6>::value);
 
         text_segment.push_back(inst);
         text_address += 4;
     }
 
-    void write_itype(Opcode opcode, Reg dest, Reg source, unsigned immediate)
+    void write_itype(Opcode opcode, Register dest, Register source, unsigned immediate)
     {
-        uint32_t inst = ((as_integer(opcode) & 63) << 26) | ((as_integer(source) & 31) << 21)
-                        | ((as_integer(dest) & 31) << 16) | (immediate & 65535);
+        uint32_t inst = ((as_integer(opcode) & Bitmask<6>::value) << 26)
+                        | ((as_integer(source) & Bitmask<5>::value) << 21)
+                        | ((as_integer(dest) & Bitmask<5>::value) << 16)
+                        | (immediate & Bitmask<16>::value);
 
         text_segment.push_back(inst);
         text_address += 4;
@@ -229,7 +233,8 @@ private:
 
     void write_jtype(Opcode opcode, int addr)
     {
-        uint32_t inst = ((as_integer(opcode) & 63) << 26) | (addr & 67108863U);
+        uint32_t inst = ((as_integer(opcode) & Bitmask<6>::value) << 26)
+                        | (addr & Bitmask<26>::value);
 
         text_segment.push_back(inst);
         text_address += 4;
