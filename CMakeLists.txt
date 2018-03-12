@@ -7,4 +7,6 @@ add_subdirectory(assembler)
 add_subdirectory(linker)
 add_subdirectory(vm)
 add_subdirectory(common)
-include_directories(${NESTED_DIRS})
+add_subdirectory(unittests)
+
+#include_directories(${NESTED_DIRS})

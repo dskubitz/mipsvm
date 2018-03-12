@@ -1,7 +1,9 @@
 #include "Funct.h"
 #include <ostream>
 
-const std::unordered_map<std::string, Funct> functs{ //NOLINT
+const std::unordered_map<std::string, Funct,
+                         case_insensitive_hash,
+                         case_insensitive_equal> functs{ //NOLINT
         {"add",     Funct::ADD},
         {"addu",    Funct::ADDU},
         {"and",     Funct::AND},

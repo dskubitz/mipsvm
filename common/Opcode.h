@@ -3,6 +3,7 @@
 
 #include <iosfwd>
 #include <unordered_map>
+#include "Hasher.h"
 
 enum class Opcode : uint8_t {
     R_TYPE = 0,
@@ -20,7 +21,9 @@ enum class Opcode : uint8_t {
     SDC1 = 61, SDC2 = 62, LI = 65, MOVE = 66, LA = 67,
 };
 
-extern const std::unordered_map<std::string, Opcode> opcodes;
+extern const std::unordered_map<std::string, Opcode,
+                                case_insensitive_hash,
+                                case_insensitive_equal> opcodes;
 std::ostream& operator<<(std::ostream& os, Opcode code);
 
 #endif //MIPS_MIPSDEF_H

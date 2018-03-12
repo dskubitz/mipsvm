@@ -1,3 +1,3 @@
 project(common)
-set(SRC Opcode.cpp Opcode.h Funct.cpp Funct.h Register.cpp Register.h Bitmask.h Form.h)
+set(SRC Opcode.cpp Opcode.h Funct.cpp Funct.h Register.cpp Register.h Bitmask.h Form.h Hasher.h)
 add_library(${PROJECT_NAME} STATIC ${SRC})

@@ -1,7 +1,9 @@
 #include "Opcode.h"
 #include <ostream>
 
-const std::unordered_map<std::string, Opcode> opcodes{ //NOLINT
+const std::unordered_map<std::string, Opcode,
+                         case_insensitive_hash,
+                         case_insensitive_equal> opcodes{ //NOLINT
         {"add",     Opcode::R_TYPE},
         {"addi",    Opcode::ADDI},
         {"addu",    Opcode::R_TYPE},

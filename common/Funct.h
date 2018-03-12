@@ -3,6 +3,7 @@
 
 #include <unordered_map>
 #include <iosfwd>
+#include "Hasher.h"
 
 enum class Funct : uint8_t {
     SLL = 0, SRL = 2, SRA = 3,
@@ -18,7 +19,9 @@ enum class Funct : uint8_t {
     TEQ = 52, TNE = 54,
 };
 
-extern const std::unordered_map<std::string, Funct> functs;
+extern const std::unordered_map<std::string, Funct,
+                                case_insensitive_hash,
+                                case_insensitive_equal> functs;
 
 std::ostream& operator<<(std::ostream& os, Funct funct);
 
