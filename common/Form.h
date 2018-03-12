@@ -4,7 +4,7 @@
 #include<type_traits>
 #include<ios>
 
-#ifdef __cpp_lib_void_t
+#ifndef __cpp_lib_void_t
 template<typename... Ts>
 struct make_void {
     typedef void type;
@@ -86,7 +86,7 @@ public:
     }
 
     explicit BasicForm(std::streamsize prec = 6, std::ios_base::fmtflags flags = {},
-                       std::streamsize width = 0, char fill = {})
+                       std::streamsize width = 0, char fill = ' ')
             : precision_(prec), fmtflags_(flags), width_(width), fill_(fill) { }
 
     template<typename T>

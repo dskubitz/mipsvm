@@ -3,6 +3,8 @@
 #include <sstream>
 #include <regex>
 #include <iomanip>
+#include <Form.h>
+#include <Bitmask.h>
 
 #include "Linker.h"
 
@@ -56,19 +58,14 @@ int Linker::link(int argc, char** argv)
 
     relocate_references();
 
+    Form word(6, std::ios_base::hex, 8, '0');
     std::ofstream output(output_name, std::ios_base::trunc);
-    output << ".text ";
-    output_hex(output, text_start << 2);
-    output << " .data ";
-    output_hex(output, data_start << 2);
-    output << " length ";
-    output_hex(output, static_cast<int>(linked.size() << 2));
-    output << '\n';
+    output << ".text " << word(text_start << 2)
+           << " .data " << word(data_start << 2)
+           << " length " << word(static_cast<int>(linked.size() << 2)) << '\n';
 
     for (int i = 0; i < linked.size(); ++i) {
-        output_hex(output, linked[i]);
-        output << '\n';
-
+        output << word(linked[i]) << '\n';
     }
     return 0;
 }
@@ -204,7 +201,6 @@ void Linker::read_symbol_line(std::istream& input)
             offset.locals.insert({label, SymbolInfo(addr, seg)});
         else if (!globals.insert({label, SymbolInfo(addr, seg)}).second)
             std::cerr << "duplicate symbols\n";
-
     }
 }
 
@@ -221,18 +217,28 @@ void Linker::read_relocation_line(std::istream& input)
             relocation_info.emplace_back(addr, instruction, offset.name, label);
         else
             relocation_info.emplace_back(addr, instruction, "global", label);
-
     }
 }
 
 void Linker::resolve(SymbolInfo& symbol, RelocationInfo& reloc)
 {
-    if (reloc.instruction == Opcode::J || reloc.instruction == Opcode::JAL)
-        //26 bit mask to the instruction at reloc.address>>2
-        linked.at(reloc.address >> 2) |= (symbol.address >> 2) & 67108863;
-    else if (reloc.instruction == Opcode::LUI || reloc.instruction == Opcode::ORI)
-        //16 bit mask to the instruction at reloc.address>>2
-        linked.at(reloc.address >> 2) |= symbol.address & 0xFFFF;
+    Form hex8(6, std::ios_base::hex, 8, '0');
+    switch (reloc.instruction) {
+    case Opcode::J:
+    case Opcode::JAL:
+        linked.at(reloc.address >> 2) |= (symbol.address >> 2) & Bitmask<26>::value;
+        break;
+    case Opcode::ORI:
+        linked.at(reloc.address >> 2) |= symbol.address & Bitmask<16>::value;
+//        std::cout << reloc.instruction << ' ' << hex8(linked.at(reloc.address >> 2)) << '\n';
+        break;
+    case Opcode::LUI:
+        linked.at(reloc.address >> 2) |= symbol.address & (Bitmask<16>::value << 16);
+//        std::cout << reloc.instruction << ' ' << hex8(linked.at(reloc.address >> 2)) << '\n';
+        break;
+    default:
+        break;
+    }
 }
 
 

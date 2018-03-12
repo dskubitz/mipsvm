@@ -1,6 +1,7 @@
 #include "Assembler.h"
 
 #include <fstream>
+#include <Form.h>
 
 std::string chop_file_extension(const char* file)
 {
@@ -84,18 +85,19 @@ void Assembler::backpatch_references()
 void Assembler::output_object(std::ostream& output)
 {
     assert(text_segment.size() == instructions.size());
+    Form word(6, std::ios_base::hex, 8, '0');
+    Form byte(6, std::ios_base::hex, 2, '0');
 
     output << ".text\t\t\t\tsize: "
            << text_segment.size() << "\tsizeof: " << sizeof(uint32_t)
            << std::setw(8) << "\naddress" << std::setw(8) << "inst\n"
            << std::setw(8) << "-------- " << std::setw(9) << " --------\n";
 
-    output << std::hex << std::setfill('0');
     int n = 0;
     for (auto& i : text_segment) {
         auto addr = static_cast<uint32_t>(n << 2);
-        output << std::setw(8) << addr << ": " << std::setw(8)
-               << i << "\t";
+        output << word(addr) << ": " << word(i) << "\t";
+
         auto it = addr_to_label.find(addr);
         if (it != addr_to_label.end())
             output << it->second.get() << ":\t" << instructions.at(n) << '\n';
@@ -105,20 +107,18 @@ void Assembler::output_object(std::ostream& output)
     }
     output << '\n';
 
-    output << std::dec << std::setfill(' ');
     output << ".data\t\t\t\tsize: " << data_segment.size() << "\tsizeof: " << sizeof(uint8_t)
            << std::setw(8) << "\naddress" << std::setw(8) << "data\n"
            << std::setw(8) << "-------- " << std::setw(9) << " -----------";
 
-    output << std::hex << std::setfill('0');
     n = 0;
     for (auto& i : data_segment) {
         if (n % 4 == 0)
-            output << "\n" << std::setw(8) << n << ": ";
-        output << std::setw(2) << static_cast<int>(i) << ' ';
+            output << "\n" << word(n) << ": ";
+        output << byte(static_cast<int>(i)) << ' ';
         n++;
     }
-    output << std::dec << std::setfill(' ') << "\n\n";
+    output << "\n\n";
 
     output << ".symbol\n";
     for (auto& i : symbol_table)
